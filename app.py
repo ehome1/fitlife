@@ -222,9 +222,21 @@ class SystemSettings(db.Model):
 
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    return render_template('index.html')
+    try:
+        if current_user.is_authenticated:
+            return redirect(url_for('dashboard'))
+        return render_template('index.html')
+    except Exception as e:
+        return f"""
+        <h1>🔧 FitLife 应用启动</h1>
+        <p>应用正在运行，但模板渲染出错。</p>
+        <p>错误: {str(e)}</p>
+        <ul>
+            <li><a href="/debug">调试页面</a></li>
+            <li><a href="/health">健康检查</a></li>
+            <li><a href="/test-ai">测试AI</a></li>
+        </ul>
+        """, 200
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -1650,25 +1662,42 @@ def api_analyze_food():
             'error': str(e)
         }), 500
 
-@app.route('/meal-log-debug')
-def meal_log_debug():
-    """调试饮食记录页面"""
+@app.route('/debug')
+def debug():
+    """最简单的调试页面"""
+    return """
+    <h1>🔧 FitLife 调试页面</h1>
+    <p>✅ Flask应用运行正常</p>
+    <p>✅ 路由响应正常</p>
+    <p>当前时间: """ + str(datetime.now()) + """</p>
+    <hr>
+    <h2>测试链接:</h2>
+    <ul>
+        <li><a href="/test-ai">测试AI功能</a></li>
+        <li><a href="/">返回首页</a></li>
+        <li><a href="/init-database">数据库初始化</a></li>
+    </ul>
+    """
+
+@app.route('/health')
+def health_check():
+    """健康检查"""
     try:
-        return """
-        <h1>🔧 饮食记录调试</h1>
-        <p>这是一个调试页面，用于测试饮食记录功能。</p>
-        <h2>错误排查：</h2>
-        <ul>
-            <li>✅ 应用启动正常</li>
-            <li>✅ 路由可访问</li>
-            <li>检查用户登录状态...</li>
-        </ul>
-        <p><a href="/login">前往登录页面</a></p>
-        <p><a href="/register">前往注册页面</a></p>
-        <p><a href="/">返回首页</a></p>
-        """, 200
+        # 检查数据库连接
+        with app.app_context():
+            db.engine.execute("SELECT 1")
+        
+        return {
+            "status": "healthy",
+            "timestamp": str(datetime.now()),
+            "database": "connected"
+        }
     except Exception as e:
-        return f"调试页面错误: {str(e)}", 500
+        return {
+            "status": "unhealthy", 
+            "error": str(e),
+            "timestamp": str(datetime.now())
+        }, 500
 
 if __name__ == '__main__':
     with app.app_context():
