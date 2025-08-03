@@ -1,6 +1,10 @@
-fastapi
-uvicorn
-pydantic
-openai
-jinja2
-pytz
+Flask>=2.0.0
+Flask-SQLAlchemy>=3.0.0
+Flask-Login>=0.6.0
+Werkzeug>=2.0.0
+google-generativeai>=0.3.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+PyMySQL>=1.0.2
+cryptography>=3.4.8
+gunicorn>=20.1.0

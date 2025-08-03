@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}个人资料设置 - 健身饮食管理{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header bg-white border-0 p-4">
+                <h3 class="mb-0 text-center">完善个人资料</h3>
+                <p class="text-muted text-center mb-0">帮助我们为你制定个性化的健身计划</p>
+            </div>
+            
+            <div class="card-body p-4">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="height" class="form-label">身高 (cm)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-ruler-vertical"></i>
+                                </span>
+                                <input type="number" class="form-control" id="height" name="height" 
+                                       step="0.1" min="100" max="250" required>
+                                <span class="input-group-text">cm</span>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="weight" class="form-label">体重 (kg)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-weight"></i>
+                                </span>
+                                <input type="number" class="form-control" id="weight" name="weight" 
+                                       step="0.1" min="30" max="200" required>
+                                <span class="input-group-text">kg</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="age" class="form-label">年龄</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-birthday-cake"></i>
+                                </span>
+                                <input type="number" class="form-control" id="age" name="age" 
+                                       min="12" max="100" required>
+                                <span class="input-group-text">岁</span>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="gender" class="form-label">性别</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-venus-mars"></i>
+                                </span>
+                                <select class="form-select" id="gender" name="gender" required>
+                                    <option value="">请选择</option>
+                                    <option value="male">男</option>
+                                    <option value="female">女</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="activity_level" class="form-label">日常活动水平</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-running"></i>
+                            </span>
+                            <select class="form-select" id="activity_level" name="activity_level" required>
+                                <option value="">请选择你的日常活动水平</option>
+                                <option value="sedentary">久坐（很少运动）</option>
+                                <option value="lightly_active">轻度活跃（每周1-3次轻度运动）</option>
+                                <option value="moderately_active">中度活跃（每周3-5次中等运动）</option>
+                                <option value="very_active">高度活跃（每周6-7次高强度运动）</option>
+                            </select>
+                        </div>
+                        <div class="form-text">这将帮助我们计算你的基础代谢率和日常热量需求</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-gradient">
+                            <i class="fas fa-arrow-right me-2"></i>下一步：设置健身目标
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>为什么需要这些信息？
+                    </h6>
+                    <ul class="mb-0 small text-muted">
+                        <li>身高、体重、年龄和性别用于计算基础代谢率(BMR)</li>
+                        <li>活动水平帮助估算你的日常总能量消耗(TDEE)</li>
+                        <li>这些数据将用于制定个性化的饮食和运动建议</li>
+                        <li>你可以随时在设置中修改这些信息</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

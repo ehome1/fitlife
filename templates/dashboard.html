@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}仪表盘 - 健身饮食管理{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-1">欢迎回来，{{ current_user.username }}！</h2>
+                <p class="text-muted mb-0">今天也要为目标努力哦 💪</p>
+            </div>
+            <div class="text-end">
+                <div class="small text-muted" data-time="current"></div>
+                {% if active_goal %}
+                <div class="small">
+                    <span class="fw-bold text-primary">目标进行中</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 今日概览卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-fire text-danger fs-3"></i>
+            </div>
+            <div class="stat-number">{{ total_burned }}</div>
+            <div class="text-muted">今日消耗 (kcal)</div>
+            {% if profile %}
+            <div class="small text-success">
+                目标：{{ (profile.bmr * 1.2)|round|int }} kcal
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-utensils text-success fs-3"></i>
+            </div>
+            <div class="stat-number">{{ total_consumed }}</div>
+            <div class="text-muted">今日摄入 (kcal)</div>
+            {% if profile %}
+            <div class="small text-info">
+                建议：{{ (profile.bmr * 1.5)|round|int }} kcal
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-balance-scale text-warning fs-3"></i>
+            </div>
+            <div class="stat-number {% if total_consumed - total_burned > 0 %}text-warning{% else %}text-success{% endif %}">
+                {{ total_consumed - total_burned }}
+            </div>
+            <div class="text-muted">热量平衡 (kcal)</div>
+            <div class="small {% if total_consumed - total_burned > 0 %}text-warning{% else %}text-success{% endif %}">
+                {% if total_consumed - total_burned > 0 %}热量盈余{% else %}热量缺口{% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-trophy text-primary fs-3"></i>
+            </div>
+            <div class="stat-number">{{ today_exercises|length + today_meals|length }}</div>
+            <div class="text-muted">今日打卡次数</div>
+            <div class="small text-primary">运动{{ today_exercises|length }}次 + 饮食{{ today_meals|length }}次</div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速操作 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-running me-2"></i>快速记录运动
+                </h5>
+                <p class="card-text text-muted">记录今天的运动情况</p>
+                <a href="{{ url_for('exercise_log') }}" class="btn btn-gradient">
+                    <i class="fas fa-plus me-2"></i>运动打卡
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-utensils me-2"></i>快速记录饮食
+                </h5>
+                <p class="card-text text-muted">记录今天的饮食情况</p>
+                <a href="{{ url_for('meal_log') }}" class="btn btn-gradient">
+                    <i class="fas fa-plus me-2"></i>饮食打卡
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 今日记录详情 -->
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-dumbbell me-2"></i>今日运动记录
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if today_exercises %}
+                    {% for exercise in today_exercises %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded">
+                        <div>
+                            <h6 class="mb-1">{{ exercise.exercise_name }}</h6>
+                            <small class="text-muted">
+                                {{ exercise.duration }}分钟 · {{ exercise.intensity or '中等' }}强度
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-danger">{{ exercise.calories_burned or 0 }}</div>
+                            <small class="text-muted">kcal</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-running fs-1 text-muted mb-3"></i>
+                        <p class="text-muted">还没有运动记录</p>
+                        <a href="{{ url_for('exercise_log') }}" class="btn btn-outline-primary">开始记录</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-utensils me-2"></i>今日饮食记录
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if today_meals %}
+                    {% for meal in today_meals %}
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded">
+                        <div>
+                            <h6 class="mb-1">{{ meal.food_name }}</h6>
+                            <small class="text-muted">
+                                {{ meal.meal_type_display }} · {{ meal.quantity }}g
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success">{{ meal.calories }}</div>
+                            <small class="text-muted">kcal</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-utensils fs-1 text-muted mb-3"></i>
+                        <p class="text-muted">还没有饮食记录</p>
+                        <a href="{{ url_for('meal_log') }}" class="btn btn-outline-primary">开始记录</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 目标进度 -->
+{% if active_goal %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-target me-2"></i>目标进度
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6>{{ active_goal.goal_type_display }}</h6>
+                        <p class="text-muted mb-2">
+                            从 {{ active_goal.current_weight }}kg 到 {{ active_goal.target_weight }}kg
+                        </p>
+                        <div class="progress mb-2" style="height: 10px;">
+                            <div class="progress-bar" style="width: 25%"></div>
+                        </div>
+                        <small class="text-muted">
+                            目标进行中 · 继续努力！
+                        </small>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="stat-number text-primary">
+                            {{ active_goal.target_weight - active_goal.current_weight }}
+                        </div>
+                        <div class="text-muted">目标变化 (kg)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/zh-cn.min.js"></script>
+<script>
+moment.locale('zh-cn');
+
+// 添加实时时间更新
+function updateCurrentTime() {
+    const timeElements = document.querySelectorAll('[data-time="current"]');
+    timeElements.forEach(el => {
+        el.textContent = moment().format('YYYY年MM月DD日 dddd');
+    });
+}
+
+// 每分钟更新时间
+setInterval(updateCurrentTime, 60000);
+</script>
+{% endblock %}

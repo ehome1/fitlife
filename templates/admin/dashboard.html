@@ -1,0 +1,163 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}控制台{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">控制台</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 统计卡片 -->
+    <div class="col-md-3 mb-4">
+        <div class="stat-card">
+            <div class="stat-number">{{ user_count }}</div>
+            <div class="stat-label">
+                <i class="fas fa-users me-2"></i>注册用户
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="stat-card success">
+            <div class="stat-number">{{ active_users }}</div>
+            <div class="stat-label">
+                <i class="fas fa-user-check me-2"></i>活跃用户
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="stat-card warning">
+            <div class="stat-number">{{ exercise_count }}</div>
+            <div class="stat-label">
+                <i class="fas fa-dumbbell me-2"></i>运动记录
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="stat-card danger">
+            <div class="stat-number">{{ meal_count }}</div>
+            <div class="stat-label">
+                <i class="fas fa-utensils me-2"></i>饮食记录
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="admin-card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-line me-2"></i>系统概览
+                </h5>
+                <p class="card-text">欢迎使用 FitLife 健身饮食管理系统后台。</p>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">快速操作</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-outline-primary btn-admin">
+                                <i class="fas fa-users me-2"></i>管理用户
+                            </a>
+                            <a href="{{ url_for('admin_prompts') }}" class="btn btn-outline-success btn-admin">
+                                <i class="fas fa-code me-2"></i>管理 Prompt
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">系统状态</h6>
+                        <div class="small">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>AI 服务:</span>
+                                <span class="badge bg-success">运行中</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>数据库:</span>
+                                <span class="badge bg-success">正常</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>缓存:</span>
+                                <span class="badge bg-success">正常</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="admin-card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-bell me-2"></i>系统通知
+                </h5>
+                <div class="small">
+                    <div class="d-flex align-items-start mb-3">
+                        <i class="fas fa-info-circle text-primary me-2 mt-1"></i>
+                        <div>
+                            <div class="fw-bold">系统升级</div>
+                            <div class="text-muted">Gemini 2.5 Flash 模型已启用</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-3">
+                        <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                        <div>
+                            <div class="fw-bold">AI 分析优化</div>
+                            <div class="text-muted">运动和饮食分析更加精准</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-cog text-warning me-2 mt-1"></i>
+                        <div>
+                            <div class="fw-bold">后台管理</div>
+                            <div class="text-muted">新增 Prompt 模板管理功能</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="admin-card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle me-2"></i>管理指南
+                </h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6 class="text-primary">用户管理</h6>
+                        <ul class="small text-muted">
+                            <li>查看所有注册用户</li>
+                            <li>管理用户账号状态</li>
+                            <li>查看用户活动数据</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-success">Prompt 管理</h6>
+                        <ul class="small text-muted">
+                            <li>自定义 AI 分析提示词</li>
+                            <li>优化运动分析模板</li>
+                            <li>调整饮食分析模板</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-warning">系统设置</h6>
+                        <ul class="small text-muted">
+                            <li>配置 AI 模型参数</li>
+                            <li>调整系统设置</li>
+                            <li>监控系统性能</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

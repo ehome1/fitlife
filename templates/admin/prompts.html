@@ -1,0 +1,219 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Prompt 管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">首页</a></li>
+<li class="breadcrumb-item active">Prompt 管理</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="admin-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-code me-2"></i>AI Prompt 模板
+                    </h5>
+                    <a href="{{ url_for('admin_new_prompt') }}" class="btn btn-primary btn-admin">
+                        <i class="fas fa-plus me-2"></i>新建模板
+                    </a>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <i class="fas fa-dumbbell fa-3x text-primary mb-3"></i>
+                                <h6>运动分析模板</h6>
+                                <p class="text-muted small mb-3">专业的运动分析和建议生成</p>
+                                <div class="d-flex justify-content-center gap-2">
+                                    {% set exercise_prompts = prompts | selectattr("type", "equalto", "exercise") | list %}
+                                    <span class="badge bg-primary">{{ exercise_prompts | length }} 个模板</span>
+                                    <span class="badge bg-success">
+                                        {{ exercise_prompts | selectattr("is_active", "equalto", true) | list | length }} 个启用
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <i class="fas fa-utensils fa-3x text-success mb-3"></i>
+                                <h6>饮食分析模板</h6>
+                                <p class="text-muted small mb-3">智能的营养分析和健康建议</p>
+                                <div class="d-flex justify-content-center gap-2">
+                                    {% set food_prompts = prompts | selectattr("type", "equalto", "food") | list %}
+                                    <span class="badge bg-success">{{ food_prompts | length }} 个模板</span>
+                                    <span class="badge bg-primary">
+                                        {{ food_prompts | selectattr("is_active", "equalto", true) | list | length }} 个启用
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>模板名称</th>
+                                <th>类型</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>更新时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for prompt in prompts %}
+                            <tr>
+                                <td class="fw-bold">#{{ prompt.id }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-{{ 'dumbbell' if prompt.type == 'exercise' else 'utensils' }} 
+                                           text-{{ 'primary' if prompt.type == 'exercise' else 'success' }} me-2"></i>
+                                        {{ prompt.name }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if prompt.type == 'exercise' else 'success' }}">
+                                        {{ prompt.type_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if prompt.is_active %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>启用
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-pause me-1"></i>禁用
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ prompt.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td>
+                                    <small>{{ prompt.updated_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-info" onclick="viewPrompt({{ prompt.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <a href="{{ url_for('admin_edit_prompt', prompt_id=prompt.id) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ url_for('admin_toggle_prompt', prompt_id=prompt.id) }}" 
+                                           class="btn btn-outline-{{ 'warning' if prompt.is_active else 'success' }}">
+                                            <i class="fas fa-{{ 'pause' if prompt.is_active else 'play' }}"></i>
+                                        </a>
+                                        <button class="btn btn-outline-danger" onclick="confirmDelete({{ prompt.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not prompts %}
+                <div class="text-center py-5">
+                    <i class="fas fa-code fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">暂无 Prompt 模板</h5>
+                    <p class="text-muted">点击上方按钮创建第一个 AI 分析模板</p>
+                    <a href="{{ url_for('admin_new_prompt') }}" class="btn btn-primary btn-admin">
+                        <i class="fas fa-plus me-2"></i>创建模板
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prompt 详情模态框 -->
+<div class="modal fade" id="promptDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-code me-2"></i>Prompt 详情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="promptDetailContent">
+                <!-- 内容将通过 JavaScript 加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 获取prompts数据 - 安全的JSON序列化
+const promptsData = [
+    {% for prompt in prompts %}
+    {
+        id: {{ prompt.id }},
+        name: "{{ prompt.name | replace('"', '\\"') }}",
+        type: "{{ prompt.type }}",
+        is_active: {{ 'true' if prompt.is_active else 'false' }},
+        prompt_content: {{ prompt.prompt_content | tojson | safe }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+function viewPrompt(promptId) {
+    const prompt = promptsData.find(p => p.id === promptId);
+    if (!prompt) return;
+    
+    const modal = new bootstrap.Modal(document.getElementById('promptDetailModal'));
+    document.getElementById('promptDetailContent').innerHTML = `
+        <div class="row">
+            <div class="col-md-4">
+                <h6>基本信息</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>ID:</strong></td><td>#${prompt.id}</td></tr>
+                    <tr><td><strong>名称:</strong></td><td>${prompt.name}</td></tr>
+                    <tr><td><strong>类型:</strong></td><td>
+                        <span class="badge bg-${prompt.type === 'exercise' ? 'primary' : 'success'}">
+                            ${prompt.type === 'exercise' ? '运动分析' : '饮食分析'}
+                        </span>
+                    </td></tr>
+                    <tr><td><strong>状态:</strong></td><td>
+                        <span class="badge bg-${prompt.is_active ? 'success' : 'secondary'}">
+                            ${prompt.is_active ? '启用' : '禁用'}
+                        </span>
+                    </td></tr>
+                </table>
+            </div>
+            <div class="col-md-8">
+                <h6>Prompt 内容</h6>
+                <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                    <pre class="mb-0" style="white-space: pre-wrap; font-size: 0.85rem;">${prompt.prompt_content}</pre>
+                </div>
+            </div>
+        </div>
+    `;
+    modal.show();
+}
+
+function confirmDelete(promptId) {
+    if (confirm('确定要删除这个 Prompt 模板吗？此操作不可逆。')) {
+        // 这里添加删除模板的逻辑
+        alert('删除功能尚未实现');
+    }
+}
+</script>
+{% endblock %}

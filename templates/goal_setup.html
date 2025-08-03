@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}健身目标设定 - 健身饮食管理{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="card">
+            <div class="card-header bg-white border-0 p-4">
+                <h3 class="mb-0 text-center">设置你的健身目标</h3>
+                <p class="text-muted text-center mb-0">明确的目标是成功的第一步</p>
+            </div>
+            
+            <div class="card-body p-4">
+                <form method="POST" id="goalForm">
+                    <div class="mb-4">
+                        <label for="goal_type" class="form-label">主要健身目的</label>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="goal_type" value="weight_loss" id="weight_loss" required>
+                                <label class="btn btn-outline-primary w-100 p-3" for="weight_loss">
+                                    <i class="fas fa-weight-hanging d-block fs-3 mb-2"></i>
+                                    <strong>减脂塑形</strong>
+                                    <small class="d-block text-muted">降低体脂率，塑造身材</small>
+                                </label>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="goal_type" value="muscle_gain" id="muscle_gain" required>
+                                <label class="btn btn-outline-primary w-100 p-3" for="muscle_gain">
+                                    <i class="fas fa-dumbbell d-block fs-3 mb-2"></i>
+                                    <strong>增肌增重</strong>
+                                    <small class="d-block text-muted">增加肌肉量，提升力量</small>
+                                </label>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="goal_type" value="fitness_improvement" id="fitness_improvement" required>
+                                <label class="btn btn-outline-primary w-100 p-3" for="fitness_improvement">
+                                    <i class="fas fa-heartbeat d-block fs-3 mb-2"></i>
+                                    <strong>提升体能</strong>
+                                    <small class="d-block text-muted">增强心肺功能，提高耐力</small>
+                                </label>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="goal_type" value="maintain_health" id="maintain_health" required>
+                                <label class="btn btn-outline-primary w-100 p-3" for="maintain_health">
+                                    <i class="fas fa-leaf d-block fs-3 mb-2"></i>
+                                    <strong>保持健康</strong>
+                                    <small class="d-block text-muted">维持当前状态，健康生活</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="current_weight" class="form-label">当前体重 (kg)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-weight"></i>
+                                </span>
+                                <input type="number" class="form-control" id="current_weight" name="current_weight" 
+                                       step="0.1" min="30" max="200" required>
+                                <span class="input-group-text">kg</span>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3" id="target_weight_group">
+                            <label for="target_weight" class="form-label">目标体重 (kg)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-target"></i>
+                                </span>
+                                <input type="number" class="form-control" id="target_weight" name="target_weight" 
+                                       step="0.1" min="30" max="200" required>
+                                <span class="input-group-text">kg</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="weeks" class="form-label">计划周期</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-calendar-alt"></i>
+                            </span>
+                            <select class="form-select" id="weeks" name="weeks" required>
+                                <option value="">选择计划周期</option>
+                                <option value="4">1个月 (4周)</option>
+                                <option value="8">2个月 (8周)</option>
+                                <option value="12">3个月 (12周) - 推荐</option>
+                                <option value="24">6个月 (24周)</option>
+                                <option value="52">1年 (52周)</option>
+                            </select>
+                        </div>
+                        <div class="form-text">建议选择3-6个月的周期，既不会太急进也能看到明显效果</div>
+                    </div>
+                    
+                    <div id="goal_summary" class="alert alert-info" style="display: none;">
+                        <h6><i class="fas fa-chart-line me-2"></i>目标概览</h6>
+                        <div id="summary_content"></div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-gradient">
+                            <i class="fas fa-rocket me-2"></i>开始我的健身之旅
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-lightbulb me-2"></i>设定目标小贴士
+                    </h6>
+                    <ul class="mb-0 small text-muted">
+                        <li><strong>合理设定：</strong>健康的减重速度为每周0.5-1kg</li>
+                        <li><strong>循序渐进：</strong>增肌需要时间，每月增重1-2kg较为合理</li>
+                        <li><strong>持之以恒：</strong>3个月是看到明显变化的最佳时间周期</li>
+                        <li><strong>及时调整：</strong>可以根据实际情况随时修改目标</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const goalTypeInputs = document.querySelectorAll('input[name="goal_type"]');
+    const currentWeightInput = document.getElementById('current_weight');
+    const targetWeightInput = document.getElementById('target_weight');
+    const weeksInput = document.getElementById('weeks');
+    const goalSummary = document.getElementById('goal_summary');
+    const summaryContent = document.getElementById('summary_content');
+    const targetWeightGroup = document.getElementById('target_weight_group');
+    
+    function updateSummary() {
+        const goalType = document.querySelector('input[name="goal_type"]:checked');
+        const currentWeight = parseFloat(currentWeightInput.value);
+        const targetWeight = parseFloat(targetWeightInput.value);
+        const weeks = parseInt(weeksInput.value);
+        
+        if (goalType && currentWeight && targetWeight && weeks) {
+            const weightDiff = targetWeight - currentWeight;
+            const weeklyChange = weightDiff / weeks;
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + weeks * 7);
+            
+            let goalText = '';
+            switch(goalType.value) {
+                case 'weight_loss':
+                    goalText = '减脂塑形';
+                    break;
+                case 'muscle_gain':
+                    goalText = '增肌增重';
+                    break;
+                case 'fitness_improvement':
+                    goalText = '提升体能';
+                    break;
+                case 'maintain_health':
+                    goalText = '保持健康';
+                    break;
+            }
+            
+            let summaryHtml = `
+                <div class="row g-3">
+                    <div class="col-6">
+                        <strong>目标类型：</strong>${goalText}
+                    </div>
+                    <div class="col-6">
+                        <strong>计划周期：</strong>${weeks}周
+                    </div>
+                    <div class="col-6">
+                        <strong>当前体重：</strong>${currentWeight}kg
+                    </div>
+                    <div class="col-6">
+                        <strong>目标体重：</strong>${targetWeight}kg
+                    </div>
+                    <div class="col-6">
+                        <strong>预期变化：</strong>${Math.abs(weightDiff).toFixed(1)}kg
+                    </div>
+                    <div class="col-6">
+                        <strong>每周变化：</strong>${Math.abs(weeklyChange).toFixed(2)}kg
+                    </div>
+                    <div class="col-12">
+                        <strong>预计完成日期：</strong>${targetDate.toLocaleDateString('zh-CN')}
+                    </div>
+                </div>
+            `;
+            
+            if (Math.abs(weeklyChange) > 1) {
+                summaryHtml += `<div class="mt-2 text-warning"><i class="fas fa-exclamation-triangle me-1"></i>每周变化较大，建议调整目标或延长计划周期</div>`;
+            }
+            
+            summaryContent.innerHTML = summaryHtml;
+            goalSummary.style.display = 'block';
+        } else {
+            goalSummary.style.display = 'none';
+        }
+    }
+    
+    // 根据目标类型调整界面
+    goalTypeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value === 'maintain_health') {
+                targetWeightGroup.style.display = 'none';
+                targetWeightInput.required = false;
+                targetWeightInput.value = currentWeightInput.value;
+            } else {
+                targetWeightGroup.style.display = 'block';
+                targetWeightInput.required = true;
+            }
+            updateSummary();
+        });
+    });
+    
+    currentWeightInput.addEventListener('input', function() {
+        const selectedGoal = document.querySelector('input[name="goal_type"]:checked');
+        if (selectedGoal && selectedGoal.value === 'maintain_health') {
+            targetWeightInput.value = this.value;
+        }
+        updateSummary();
+    });
+    
+    targetWeightInput.addEventListener('input', updateSummary);
+    weeksInput.addEventListener('change', updateSummary);
+});
+</script>
+{% endblock %}

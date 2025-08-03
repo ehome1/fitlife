@@ -1,0 +1,289 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}系统设置{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">首页</a></li>
+<li class="breadcrumb-item active">系统设置</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="admin-card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-cog me-2"></i>系统配置
+                </h5>
+
+                <div class="accordion" id="settingsAccordion">
+                    <!-- AI 模型配置 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#aiSettings">
+                                <i class="fas fa-robot me-2"></i>AI 模型配置
+                            </button>
+                        </h2>
+                        <div id="aiSettings" class="accordion-collapse collapse show">
+                            <div class="accordion-body">
+                                <form>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">当前模型</label>
+                                                <input type="text" class="form-control" value="gemini-2.5-flash" readonly>
+                                                <div class="form-text">正在使用的 AI 模型版本</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">API 状态</label>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" value="运行正常" readonly>
+                                                    <span class="input-group-text">
+                                                        <i class="fas fa-check-circle text-success"></i>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">API 密钥</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" value="AIzaSyDkcWOjDie0Hnq-FfnZVlo0fazItGmRh8w" readonly>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="toggleApiKey()">
+                                                <i class="fas fa-eye" id="apiKeyIcon"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">Gemini API 访问密钥</div>
+                                    </div>
+
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        AI 模型配置需要重启应用才能生效
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 系统参数 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#systemSettings">
+                                <i class="fas fa-server me-2"></i>系统参数
+                            </button>
+                        </h2>
+                        <div id="systemSettings" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <form>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">用户注册</label>
+                                                <select class="form-select">
+                                                    <option selected>开放注册</option>
+                                                    <option>邀请注册</option>
+                                                    <option>关闭注册</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">默认语言</label>
+                                                <select class="form-select">
+                                                    <option selected>中文简体</option>
+                                                    <option>English</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">数据保留天数</label>
+                                                <input type="number" class="form-control" value="365" min="30">
+                                                <div class="form-text">用户数据保留天数</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">分页大小</label>
+                                                <input type="number" class="form-control" value="20" min="10" max="100">
+                                                <div class="form-text">列表页面每页显示条数</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary btn-admin">
+                                        <i class="fas fa-save me-2"></i>保存设置
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 缓存配置 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#cacheSettings">
+                                <i class="fas fa-database me-2"></i>缓存配置
+                            </button>
+                        </h2>
+                        <div id="cacheSettings" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-memory fa-2x text-primary mb-2"></i>
+                                                <h6>内存缓存</h6>
+                                                <p class="text-muted small">临时数据缓存</p>
+                                                <button class="btn btn-outline-primary btn-sm">清理缓存</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-file fa-2x text-success mb-2"></i>
+                                                <h6>文件缓存</h6>
+                                                <p class="text-muted small">静态文件缓存</p>
+                                                <button class="btn btn-outline-success btn-sm">清理缓存</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="admin-card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-bar me-2"></i>系统状态
+                </h5>
+                
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>CPU 使用率</span>
+                        <span class="badge bg-success">23%</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" style="width: 23%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>内存使用率</span>
+                        <span class="badge bg-warning">67%</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-warning" style="width: 67%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>磁盘使用率</span>
+                        <span class="badge bg-info">45%</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-info" style="width: 45%"></div>
+                    </div>
+                </div>
+
+                <div class="small text-muted">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>运行时间:</span>
+                        <span>2天 14小时</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Python 版本:</span>
+                        <span>3.13.0</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Flask 版本:</span>
+                        <span>2.3.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-tools me-2"></i>维护工具
+                </h5>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-admin" onclick="backupDatabase()">
+                        <i class="fas fa-download me-2"></i>备份数据库
+                    </button>
+                    <button class="btn btn-outline-warning btn-admin" onclick="clearLogs()">
+                        <i class="fas fa-trash me-2"></i>清理日志
+                    </button>
+                    <button class="btn btn-outline-info btn-admin" onclick="optimizeDatabase()">
+                        <i class="fas fa-wrench me-2"></i>优化数据库
+                    </button>
+                    <button class="btn btn-outline-danger btn-admin" onclick="restartSystem()">
+                        <i class="fas fa-redo me-2"></i>重启系统
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleApiKey() {
+    const input = document.querySelector('#aiSettings input[type="password"]');
+    const icon = document.getElementById('apiKeyIcon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+function backupDatabase() {
+    if (confirm('确定要备份数据库吗？')) {
+        alert('数据库备份功能尚未实现');
+    }
+}
+
+function clearLogs() {
+    if (confirm('确定要清理系统日志吗？')) {
+        alert('日志清理功能尚未实现');
+    }
+}
+
+function optimizeDatabase() {
+    if (confirm('确定要优化数据库吗？这可能需要几分钟时间。')) {
+        alert('数据库优化功能尚未实现');
+    }
+}
+
+function restartSystem() {
+    if (confirm('确定要重启系统吗？这将导致短暂的服务中断。')) {
+        alert('系统重启功能尚未实现');
+    }
+}
+</script>
+{% endblock %}

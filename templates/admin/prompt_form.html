@@ -1,0 +1,274 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ '编辑' if prompt else '新建' }} Prompt 模板{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">首页</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin_prompts') }}">Prompt 管理</a></li>
+<li class="breadcrumb-item active">{{ '编辑模板' if prompt else '新建模板' }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="admin-card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-{{ 'edit' if prompt else 'plus' }} me-2"></i>
+                    {{ '编辑' if prompt else '新建' }} Prompt 模板
+                </h5>
+
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">模板名称</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ prompt.name if prompt else '' }}" required
+                                       placeholder="如：高级运动分析模板">
+                                <div class="form-text">为这个 Prompt 模板起一个描述性的名称</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="type" class="form-label">模板类型</label>
+                                <select class="form-select" id="type" name="type" required>
+                                    <option value="">请选择模板类型</option>
+                                    <option value="exercise" 
+                                            {{ 'selected' if prompt and prompt.type == 'exercise' else '' }}>
+                                        运动分析模板
+                                    </option>
+                                    <option value="food" 
+                                            {{ 'selected' if prompt and prompt.type == 'food' else '' }}>
+                                        饮食分析模板
+                                    </option>
+                                </select>
+                                <div class="form-text">选择此模板用于运动分析还是饮食分析</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="content" class="form-label">Prompt 内容</label>
+                        <div class="mb-2">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('exercise')">
+                                    <i class="fas fa-dumbbell me-1"></i>运动模板
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('food')">
+                                    <i class="fas fa-utensils me-1"></i>饮食模板
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="insertVariable()">
+                                    <i class="fas fa-code me-1"></i>插入变量
+                                </button>
+                            </div>
+                        </div>
+                        <textarea class="form-control" id="content" name="content" rows="20" required
+                                  placeholder="在这里输入 AI 分析的 Prompt 内容...">{{ prompt.prompt_content if prompt else '' }}</textarea>
+                        <div class="form-text">
+                            编写详细的 AI 分析提示词，支持使用变量如 {user_age}、{exercise_type} 等
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-info-circle me-2"></i>运动分析变量
+                                    </h6>
+                                    <div class="small">
+                                        <code>{user_age}</code> - 用户年龄<br>
+                                        <code>{user_gender}</code> - 用户性别<br>
+                                        <code>{user_weight}</code> - 用户体重<br>
+                                        <code>{user_height}</code> - 用户身高<br>
+                                        <code>{activity_level}</code> - 活动水平<br>
+                                        <code>{exercise_type}</code> - 运动类型<br>
+                                        <code>{exercise_name}</code> - 运动名称<br>
+                                        <code>{duration}</code> - 运动时长<br>
+                                        <code>{bmr}</code> - 基础代谢率
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-lightbulb me-2"></i>饮食分析变量
+                                    </h6>
+                                    <div class="small">
+                                        <code>{food_description}</code> - 食物描述<br>
+                                        <code>{user_age}</code> - 用户年龄<br>
+                                        <code>{user_gender}</code> - 用户性别<br>
+                                        <code>{user_weight}</code> - 用户体重<br>
+                                        <code>{user_goals}</code> - 健身目标<br>
+                                        <code>{bmr}</code> - 基础代谢率<br>
+                                        <code>{activity_level}</code> - 活动水平
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-admin">
+                            <i class="fas fa-save me-2"></i>
+                            {{ '更新模板' if prompt else '创建模板' }}
+                        </button>
+                        <a href="{{ url_for('admin_prompts') }}" class="btn btn-secondary btn-admin">
+                            <i class="fas fa-times me-2"></i>取消
+                        </a>
+                        {% if prompt %}
+                        <button type="button" class="btn btn-outline-info btn-admin ms-auto" onclick="testPrompt()">
+                            <i class="fas fa-play me-2"></i>测试 Prompt
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 测试 Prompt 模态框 -->
+<div class="modal fade" id="testPromptModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-play me-2"></i>测试 Prompt
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    此功能将使用当前 Prompt 内容进行测试分析
+                </div>
+                <div id="testResult">
+                    <!-- 测试结果将显示在这里 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function insertTemplate(type) {
+    const textarea = document.getElementById('content');
+    let template = '';
+    
+    if (type === 'exercise') {
+        template = `作为一名专业的运动健身教练，请分析以下运动信息并提供专业建议。
+
+用户信息：
+- 年龄：{user_age}岁
+- 性别：{user_gender}
+- 体重：{user_weight}kg
+- 活动水平：{activity_level}
+
+运动信息：
+- 运动类型：{exercise_type}
+- 运动名称：{exercise_name}
+- 持续时间：{duration}分钟
+
+请提供：
+1. 准确的卡路里消耗计算
+2. 运动强度评估
+3. 个性化建议
+4. 安全提醒`;
+    } else {
+        template = `作为一名专业的营养师，请分析以下食物并提供营养建议。
+
+用户信息：
+- 年龄：{user_age}岁
+- 性别：{user_gender}
+- 体重：{user_weight}kg
+- 健身目标：{user_goals}
+
+食物描述：{food_description}
+
+请提供：
+1. 营养成分分析
+2. 健康评分
+3. 营养建议
+4. 注意事项`;
+    }
+    
+    textarea.value = template;
+    textarea.focus();
+}
+
+function insertVariable() {
+    const variables = [
+        '{user_age}', '{user_gender}', '{user_weight}', '{user_height}',
+        '{activity_level}', '{exercise_type}', '{exercise_name}', '{duration}',
+        '{food_description}', '{bmr}', '{user_goals}'
+    ];
+    
+    const variable = prompt('选择要插入的变量（输入数字）：\n' + 
+        variables.map((v, i) => `${i + 1}. ${v}`).join('\n'));
+    
+    if (variable && variable >= 1 && variable <= variables.length) {
+        const textarea = document.getElementById('content');
+        const selectedVar = variables[variable - 1];
+        const cursorPos = textarea.selectionStart;
+        const textBefore = textarea.value.substring(0, cursorPos);
+        const textAfter = textarea.value.substring(cursorPos);
+        
+        textarea.value = textBefore + selectedVar + textAfter;
+        textarea.focus();
+        textarea.setSelectionRange(cursorPos + selectedVar.length, cursorPos + selectedVar.length);
+    }
+}
+
+function testPrompt() {
+    const modal = new bootstrap.Modal(document.getElementById('testPromptModal'));
+    document.getElementById('testResult').innerHTML = `
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">测试中...</span>
+            </div>
+            <p class="mt-2 text-muted">正在测试 Prompt...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // 模拟测试结果
+    setTimeout(() => {
+        document.getElementById('testResult').innerHTML = `
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i>
+                Prompt 测试成功！AI 能够正确理解并响应指令。
+            </div>
+            <h6>测试结果预览：</h6>
+            <div class="border rounded p-3 bg-light">
+                <small class="text-muted">这是一个模拟的 AI 响应结果...</small>
+            </div>
+        `;
+    }, 2000);
+}
+
+// 表单验证
+document.querySelector('form').addEventListener('submit', function(e) {
+    const name = document.getElementById('name').value.trim();
+    const type = document.getElementById('type').value;
+    const content = document.getElementById('content').value.trim();
+    
+    if (!name || !type || !content) {
+        e.preventDefault();
+        alert('请填写所有必填字段');
+        return false;
+    }
+    
+    if (content.length < 50) {
+        e.preventDefault();
+        alert('Prompt 内容太短，请提供更详细的指令');
+        return false;
+    }
+});
+</script>
+{% endblock %}

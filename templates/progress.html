@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}进度分析 - 健身饮食管理{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2>
+            <i class="fas fa-chart-line me-2"></i>进度分析
+        </h2>
+        <p class="text-muted">通过数据可视化了解你的健身和饮食趋势</p>
+    </div>
+</div>
+
+<!-- 时间范围选择 -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <label class="form-label mb-0">时间范围：</label>
+                    </div>
+                    <div class="col">
+                        <select class="form-select" id="dateRange">
+                            <option value="7">最近一周</option>
+                            <option value="30" selected>最近一月</option>
+                            <option value="90">最近三月</option>
+                            <option value="365">最近一年</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-outline-primary" id="refreshCharts">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 数据统计卡片 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-fire text-danger fs-3"></i>
+            </div>
+            <div class="stat-number" id="totalBurned">0</div>
+            <div class="text-muted">总消耗 (kcal)</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-utensils text-success fs-3"></i>
+            </div>
+            <div class="stat-number" id="totalConsumed">0</div>
+            <div class="text-muted">总摄入 (kcal)</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-dumbbell text-primary fs-3"></i>
+            </div>
+            <div class="stat-number" id="exerciseDays">0</div>
+            <div class="text-muted">运动天数</div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="mb-2">
+                <i class="fas fa-clock text-warning fs-3"></i>
+            </div>
+            <div class="stat-number" id="totalMinutes">0</div>
+            <div class="text-muted">运动时长 (分钟)</div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表区域 -->
+<div class="row g-4">
+    <!-- 热量平衡趋势图 -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>热量平衡趋势
+                </h5>
+                <p class="text-muted small mb-0">每日热量摄入与消耗对比</p>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="calorieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 运动强度分布 -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>运动强度分布
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="intensityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 营养成分分析 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-radar me-2"></i>营养成分分析
+                </h5>
+                <p class="text-muted small mb-0">蛋白质、碳水化合物、脂肪摄入比例</p>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="nutritionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 运动类型分析 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>运动类型分析
+                </h5>
+                <p class="text-muted small mb-0">不同运动类型的时长和频次</p>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="exerciseTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 打卡热力图 -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-check me-2"></i>打卡热力图
+                </h5>
+                <p class="text-muted small mb-0">每日打卡活跃度，颜色越深表示打卡次数越多</p>
+            </div>
+            <div class="card-body">
+                <div id="heatmapChart" class="text-center">
+                    <!-- 热力图将通过JavaScript生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 详细数据表格 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-table me-2"></i>详细数据
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>运动次数</th>
+                                <th>运动时长</th>
+                                <th>消耗热量</th>
+                                <th>饮食记录</th>
+                                <th>摄入热量</th>
+                                <th>热量平衡</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable">
+                            <!-- 数据将通过JavaScript填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 准备数据
+const exercises = {{ exercises_data|tojson }};
+const meals = {{ meals_data|tojson }};
+
+// 初始化所有图表
+let calorieChart, intensityChart, nutritionChart, exerciseTypeChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    updateStatistics();
+    generateHeatmap();
+    fillDataTable();
+    
+    // 监听时间范围变化
+    document.getElementById('dateRange').addEventListener('change', function() {
+        updateCharts();
+    });
+    
+    document.getElementById('refreshCharts').addEventListener('click', function() {
+        updateCharts();
+    });
+});
+
+function initializeCharts() {
+    // 热量平衡趋势图
+    const calorieCtx = document.getElementById('calorieChart').getContext('2d');
+    calorieChart = new Chart(calorieCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '消耗热量',
+                data: [],
+                borderColor: 'rgb(220, 53, 69)',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                fill: true
+            }, {
+                label: '摄入热量',
+                data: [],
+                borderColor: 'rgb(25, 135, 84)',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '热量 (kcal)'
+                    }
+                }
+            }
+        }
+    });
+    
+    // 运动强度分布
+    const intensityCtx = document.getElementById('intensityChart').getContext('2d');
+    intensityChart = new Chart(intensityCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['低强度', '中等强度', '高强度'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: [
+                    'rgba(25, 135, 84, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // 营养成分分析
+    const nutritionCtx = document.getElementById('nutritionChart').getContext('2d');
+    nutritionChart = new Chart(nutritionCtx, {
+        type: 'radar',
+        data: {
+            labels: ['蛋白质', '碳水化合物', '脂肪'],
+            datasets: [{
+                label: '营养摄入 (g)',
+                data: [0, 0, 0],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgb(54, 162, 235)',
+                pointBackgroundColor: 'rgb(54, 162, 235)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // 运动类型分析
+    const exerciseTypeCtx = document.getElementById('exerciseTypeChart').getContext('2d');
+    exerciseTypeChart = new Chart(exerciseTypeCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '运动时长 (分钟)',
+                data: [],
+                backgroundColor: 'rgba(102, 126, 234, 0.8)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '时长 (分钟)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateCharts() {
+    const days = parseInt(document.getElementById('dateRange').value);
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - days);
+    
+    // 过滤数据
+    const filteredExercises = exercises.filter(ex => {
+        const exDate = new Date(ex.date);
+        return exDate >= startDate && exDate <= endDate;
+    });
+    
+    const filteredMeals = meals.filter(meal => {
+        const mealDate = new Date(meal.date);
+        return mealDate >= startDate && mealDate <= endDate;
+    });
+    
+    // 更新热量图表
+    updateCalorieChart(filteredExercises, filteredMeals);
+    
+    // 更新强度分布
+    updateIntensityChart(filteredExercises);
+    
+    // 更新营养图表
+    updateNutritionChart(filteredMeals);
+    
+    // 更新运动类型图表
+    updateExerciseTypeChart(filteredExercises);
+    
+    updateStatistics();
+}
+
+function updateCalorieChart(filteredExercises, filteredMeals) {
+    // 按日期分组计算热量
+    const dailyData = {};
+    
+    filteredExercises.forEach(ex => {
+        if (!dailyData[ex.date]) {
+            dailyData[ex.date] = { burned: 0, consumed: 0 };
+        }
+        dailyData[ex.date].burned += ex.calories_burned || 0;
+    });
+    
+    filteredMeals.forEach(meal => {
+        if (!dailyData[meal.date]) {
+            dailyData[meal.date] = { burned: 0, consumed: 0 };
+        }
+        dailyData[meal.date].consumed += meal.calories || 0;
+    });
+    
+    const dates = Object.keys(dailyData).sort();
+    const burnedData = dates.map(date => dailyData[date].burned);
+    const consumedData = dates.map(date => dailyData[date].consumed);
+    
+    calorieChart.data.labels = dates;
+    calorieChart.data.datasets[0].data = burnedData;
+    calorieChart.data.datasets[1].data = consumedData;
+    calorieChart.update();
+}
+
+function updateIntensityChart(filteredExercises) {
+    const intensityCount = { low: 0, medium: 0, high: 0 };
+    
+    filteredExercises.forEach(ex => {
+        if (ex.intensity && intensityCount.hasOwnProperty(ex.intensity)) {
+            intensityCount[ex.intensity]++;
+        }
+    });
+    
+    intensityChart.data.datasets[0].data = [
+        intensityCount.low,
+        intensityCount.medium,
+        intensityCount.high
+    ];
+    intensityChart.update();
+}
+
+function updateNutritionChart(filteredMeals) {
+    let totalProtein = 0, totalCarbs = 0, totalFat = 0;
+    
+    filteredMeals.forEach(meal => {
+        totalProtein += meal.protein || 0;
+        totalCarbs += meal.carbs || 0;
+        totalFat += meal.fat || 0;
+    });
+    
+    nutritionChart.data.datasets[0].data = [totalProtein, totalCarbs, totalFat];
+    nutritionChart.update();
+}
+
+function updateExerciseTypeChart(filteredExercises) {
+    const typeCount = {};
+    
+    filteredExercises.forEach(ex => {
+        if (!typeCount[ex.exercise_type]) {
+            typeCount[ex.exercise_type] = 0;
+        }
+        typeCount[ex.exercise_type] += ex.duration || 0;
+    });
+    
+    const types = Object.keys(typeCount);
+    const durations = types.map(type => typeCount[type]);
+    
+    exerciseTypeChart.data.labels = types;
+    exerciseTypeChart.data.datasets[0].data = durations;
+    exerciseTypeChart.update();
+}
+
+function updateStatistics() {
+    // 计算统计数据
+    let totalBurned = 0, totalConsumed = 0, exerciseDays = 0, totalMinutes = 0;
+    
+    // 处理运动数据
+    const exerciseDates = new Set();
+    exercises.forEach(exercise => {
+        totalBurned += exercise.calories_burned || 0;
+        totalMinutes += exercise.duration || 0;
+        exerciseDates.add(exercise.date);
+    });
+    exerciseDays = exerciseDates.size;
+    
+    // 处理饮食数据
+    meals.forEach(meal => {
+        totalConsumed += meal.calories || 0;
+    });
+    
+    // 更新显示
+    document.getElementById('totalBurned').textContent = totalBurned.toLocaleString();
+    document.getElementById('totalConsumed').textContent = totalConsumed.toLocaleString();
+    document.getElementById('exerciseDays').textContent = exerciseDays;
+    document.getElementById('totalMinutes').textContent = totalMinutes.toLocaleString();
+    
+    console.log('统计数据已更新:', {
+        totalBurned, totalConsumed, exerciseDays, totalMinutes
+    });
+}
+
+function generateHeatmap() {
+    // 简化的热力图生成
+    const heatmapContainer = document.getElementById('heatmapChart');
+    heatmapContainer.innerHTML = '<p class="text-muted">热力图正在开发中...</p>';
+}
+
+function fillDataTable() {
+    const tableBody = document.getElementById('dataTable');
+    // 简化的数据表格填充
+    if (exercises.length === 0 && meals.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">暂无数据</td></tr>';
+    } else {
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">数据处理中...</td></tr>';
+    }
+}
+
+// 初始化时更新图表
+setTimeout(updateCharts, 100);
+</script>
+{% endblock %}

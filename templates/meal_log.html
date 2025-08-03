@@ -1,0 +1,940 @@
+{% extends "base.html" %}
+
+{% block title %}饮食打卡 - 健身饮食管理{% endblock %}
+
+{% block content %}
+<!-- 页面标题 -->
+<div class="dashboard-header mb-4">
+    <h2 class="h3 text-center mb-0">
+        <i class="fas fa-utensils me-3 text-primary"></i>🍽️ FitLife 饮食记录管理
+    </h2>
+</div>
+
+<!-- 红框1：今日营养概览 (置顶) -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-gradient-success text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-chart-pie me-2"></i>🎯 今日营养概览
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-md-3 col-6">
+                <div class="nutrition-overview-item text-center">
+                    <div class="nutrition-icon mb-2">
+                        <i class="fas fa-fire fa-2x text-danger"></i>
+                    </div>
+                    <div class="nutrition-numbers">
+                        <div class="current-value h4 mb-0" id="daily_calories">0</div>
+                        <div class="target-value text-muted small">/2000 kcal</div>
+                    </div>
+                    <div class="progress mt-2" style="height: 8px;">
+                        <div class="progress-bar bg-danger" id="calories_progress" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted">🔥 总热量</small>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="nutrition-overview-item text-center">
+                    <div class="nutrition-icon mb-2">
+                        <i class="fas fa-dumbbell fa-2x text-primary"></i>
+                    </div>
+                    <div class="nutrition-numbers">
+                        <div class="current-value h4 mb-0" id="daily_protein">0</div>
+                        <div class="target-value text-muted small">/80g</div>
+                    </div>
+                    <div class="progress mt-2" style="height: 8px;">
+                        <div class="progress-bar bg-primary" id="protein_progress" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted">💪 蛋白质</small>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="nutrition-overview-item text-center">
+                    <div class="nutrition-icon mb-2">
+                        <i class="fas fa-bread-slice fa-2x text-warning"></i>
+                    </div>
+                    <div class="nutrition-numbers">
+                        <div class="current-value h4 mb-0" id="daily_carbs">0</div>
+                        <div class="target-value text-muted small">/200g</div>
+                    </div>
+                    <div class="progress mt-2" style="height: 8px;">
+                        <div class="progress-bar bg-warning" id="carbs_progress" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted">🍞 碳水</small>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="nutrition-overview-item text-center">
+                    <div class="nutrition-icon mb-2">
+                        <i class="fas fa-tint fa-2x text-info"></i>
+                    </div>
+                    <div class="nutrition-numbers">
+                        <div class="current-value h4 mb-0" id="daily_fat">0</div>
+                        <div class="target-value text-muted small">/65g</div>
+                    </div>
+                    <div class="progress mt-2" style="height: 8px;">
+                        <div class="progress-bar bg-info" id="fat_progress" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted">💧 脂肪</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 红框2：快速记录区域 -->
+    <div class="col-lg-6">
+        <!-- 快速记录卡片 -->
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-plus-circle me-2"></i>📝 快速记录饮食
+                </h5>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="meal_date" class="form-label">📅 用餐日期</label>
+                        <input type="date" class="form-control" id="meal_date" name="meal_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="meal_type" class="form-label">🍽️ 餐次选择</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="meal_type" value="breakfast" id="breakfast" required>
+                                <label class="btn btn-outline-primary w-100 py-2" for="breakfast">
+                                    <i class="fas fa-sun d-block mb-1"></i>早餐
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="meal_type" value="lunch" id="lunch" required>
+                                <label class="btn btn-outline-primary w-100 py-2" for="lunch">
+                                    <i class="fas fa-sun d-block mb-1"></i>午餐
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="meal_type" value="dinner" id="dinner" required>
+                                <label class="btn btn-outline-primary w-100 py-2" for="dinner">
+                                    <i class="fas fa-moon d-block mb-1"></i>晚餐
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="meal_type" value="snack" id="snack" required>
+                                <label class="btn btn-outline-primary w-100 py-2" for="snack">
+                                    <i class="fas fa-cookie-bite d-block mb-1"></i>加餐
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="food_description" class="form-label">📋 食物描述</label>
+                        <textarea class="form-control" id="food_description" name="food_description" 
+                                  rows="3" placeholder="例：一碗白米饭,两个煎蛋,一杯牛奶,半个苹果" required></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-robot me-1 text-primary"></i>
+                            AI将智能分析营养成分
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-warning btn-lg" id="analyzeFood">
+                            <i class="fas fa-magic me-2"></i>🤖 AI智能分析
+                        </button>
+                        <button type="submit" class="btn btn-success btn-lg" style="display: none;" id="submitForm">
+                            <i class="fas fa-check me-2"></i>✅ 记录饮食
+                        </button>
+                    </div>
+                    
+                    <!-- 流式AI分析结果显示区域 -->
+                    <div class="mt-4" id="streamingAnalysis" style="display: none;">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-robot me-2"></i>AI营养分析 <span class="spinner-border spinner-border-sm" id="analysisSpinner"></span>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <!-- 基础营养信息 -->
+                                <div class="row g-3 mb-3" id="nutritionQuickView">
+                                    <div class="col-3 text-center">
+                                        <div class="nutrition-mini-card">
+                                            <div class="nutrition-value text-danger h5" id="stream_calories">-</div>
+                                            <small class="text-muted">热量(kcal)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-3 text-center">
+                                        <div class="nutrition-mini-card">
+                                            <div class="nutrition-value text-primary h5" id="stream_protein">-</div>
+                                            <small class="text-muted">蛋白质(g)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-3 text-center">
+                                        <div class="nutrition-mini-card">
+                                            <div class="nutrition-value text-warning h5" id="stream_carbs">-</div>
+                                            <small class="text-muted">碳水(g)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-3 text-center">
+                                        <div class="nutrition-mini-card">
+                                            <div class="nutrition-value text-success h5" id="stream_fat">-</div>
+                                            <small class="text-muted">脂肪(g)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 识别的食物 -->
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">🍽️ 识别的食物</h6>
+                                    <div class="bg-light p-2 rounded" id="stream_foods">正在识别...</div>
+                                </div>
+                                
+                                <!-- 健康分析流式输出 -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-success mb-2">✅ 营养亮点</h6>
+                                        <div id="stream_highlights" class="small">正在分析营养亮点...</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-warning mb-2">⚠️ 注意事项</h6>
+                                        <div id="stream_concerns" class="small">正在分析注意事项...</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 分析完成提示 -->
+                                <div class="mt-3 text-center" id="analysisComplete" style="display: none;">
+                                    <button class="btn btn-success" id="confirmStreamAnalysis">
+                                        <i class="fas fa-check me-2"></i>确认并记录
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 隐藏字段存储分析结果 -->
+                    <input type="hidden" name="total_calories" id="hidden_calories">
+                    <input type="hidden" name="total_protein" id="hidden_protein">
+                    <input type="hidden" name="total_carbs" id="hidden_carbs">
+                    <input type="hidden" name="total_fat" id="hidden_fat">
+                    <input type="hidden" name="food_items" id="hidden_food_items">
+                </form>
+            </div>
+        </div>
+        
+        <!-- 最近饮食记录 -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-gradient-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>📈 最近饮食记录
+                </h5>
+            </div>
+            
+            <div class="card-body">
+                {% if recent_meals %}
+                    <div class="meal-list" style="max-height: 400px; overflow-y: auto;">
+                        {% for meal in recent_meals %}
+                        <div class="meal-item mb-2 p-2 border rounded-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <span class="badge bg-{{ meal.meal_type_color }} me-2">{{ meal.meal_type_display }}</span>
+                                        <small class="fw-bold">{{ meal.food_name }}</small>
+                                    </div>
+                                    <div class="small text-muted">{{ meal.date.strftime('%m-%d') }}</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">{{ meal.calories }}</div>
+                                    <small class="text-muted">kcal</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-primary btn-sm">查看更多</button>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-utensils fs-2 text-muted mb-3"></i>
+                        <p class="text-muted mb-0">还没有饮食记录</p>
+                        <small class="text-muted">开始记录你的第一餐吧！</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右侧：最近记录和智能建议 -->
+    <div class="col-lg-6">
+        <!-- 最近饮食记录 -->
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-gradient-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>📈 最近饮食记录
+                </h5>
+            </div>
+            
+            <div class="card-body">
+                {% if recent_meals %}
+                    <div class="meal-list" style="max-height: 300px; overflow-y: auto;">
+                        {% for meal in recent_meals %}
+                        <div class="meal-item mb-2 p-2 border rounded-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <span class="badge bg-{{ meal.meal_type_color }} me-2">{{ meal.meal_type_display }}</span>
+                                        <small class="fw-bold">{{ meal.food_name }}</small>
+                                    </div>
+                                    <div class="small text-muted">{{ meal.date.strftime('%m-%d') }}</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">{{ meal.calories }}</div>
+                                    <small class="text-muted">kcal</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-primary btn-sm">查看更多</button>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-utensils fs-2 text-muted mb-3"></i>
+                        <p class="text-muted mb-0">还没有饮食记录</p>
+                        <small class="text-muted">开始记录你的第一餐吧！</small>
+                    </div>
+                {% endif %}
+                
+                <!-- 智能建议 -->
+                <hr>
+                <h6 class="text-warning mb-3">
+                    <i class="fas fa-lightbulb me-2"></i>💡 智能建议
+                </h6>
+                <div class="suggestion-list" id="dailySuggestions">
+                    <div class="suggestion-item d-flex align-items-start mb-2">
+                        <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                        <span class="small">今日蛋白质摄入略少，建议增加鱼肉或豆制品</span>
+                    </div>
+                    <div class="suggestion-item d-flex align-items-start mb-2">
+                        <i class="fas fa-info-circle text-info me-2 mt-1"></i>
+                        <span class="small">碳水化合物摄入适中，保持当前水平</span>
+                    </div>
+                    <div class="suggestion-item d-flex align-items-start">
+                        <i class="fas fa-exclamation-triangle text-warning me-2 mt-1"></i>
+                        <span class="small">建议晚餐增加蔬菜摄入，提升纤维含量</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 红框3：营养趋势分析 (底部) -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-gradient-info text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-line me-2"></i>📊 营养趋势分析
+            </h5>
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="trendRange" id="weekTrend" checked>
+                <label class="btn btn-outline-light btn-sm" for="weekTrend">本周</label>
+                
+                <input type="radio" class="btn-check" name="trendRange" id="monthTrend">
+                <label class="btn btn-outline-light btn-sm" for="monthTrend">本月</label>
+                
+                <input type="radio" class="btn-check" name="trendRange" id="historyTrend">
+                <label class="btn btn-outline-light btn-sm" for="historyTrend">历史</label>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="trend-chart-container">
+                    <canvas id="nutritionTrendChart" width="400" height="250"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <h6 class="text-muted mb-3">营养素比例分布</h6>
+                <div class="nutrition-ratio-chart">
+                    <canvas id="nutritionRatioChart" width="200" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.dashboard-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.nutrition-overview-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.nutrition-icon {
+    opacity: 0.8;
+}
+
+.current-value {
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.progress {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    transition: width 0.6s ease;
+}
+
+.trend-chart-container {
+    height: 300px;
+    position: relative;
+}
+
+.nutrition-ratio-chart {
+    height: 200px;
+    position: relative;
+}
+
+.suggestion-item {
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.meal-item {
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef !important;
+}
+
+.meal-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nutrition-card {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
+}
+
+.bg-gradient-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+}
+
+.nutrition-mini-card {
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.nutrition-mini-card .nutrition-value {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.streaming-text {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.typing-effect::after {
+    content: '|';
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mealDate = document.getElementById('meal_date');
+    const foodDescription = document.getElementById('food_description');
+    const analyzeButton = document.getElementById('analyzeFood');
+    const submitButton = document.getElementById('submitForm');
+    
+    // 设置默认日期为今天
+    if (!mealDate.value) {
+        mealDate.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // 初始化图表
+    initializeCharts();
+    
+    // 加载今日营养数据
+    loadDailyNutrition();
+    
+    // AI智能分析功能 - 流式输出
+    analyzeButton.addEventListener('click', function() {
+        const description = foodDescription.value.trim();
+        if (!description) {
+            alert('请先输入食物描述');
+            return;
+        }
+        
+        // 显示流式分析区域
+        document.getElementById('streamingAnalysis').style.display = 'block';
+        document.getElementById('analysisSpinner').style.display = 'inline-block';
+        document.getElementById('analysisComplete').style.display = 'none';
+        
+        analyzeButton.disabled = true;
+        analyzeButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>分析中...';
+        
+        // 开始流式显示分析过程
+        startStreamingAnalysis(description);
+    });
+    
+    // 确认流式分析结果
+    document.getElementById('confirmStreamAnalysis').addEventListener('click', function() {
+        submitButton.style.display = 'block';
+        analyzeButton.innerHTML = '<i class="fas fa-edit me-2"></i>重新分析';
+        
+        // 更新今日营养概览
+        loadDailyNutrition();
+    });
+    
+    // 流式分析函数
+    function startStreamingAnalysis(description) {
+        // 重置显示内容
+        document.getElementById('stream_foods').innerHTML = '<span class="typing-effect">正在识别食物...</span>';
+        document.getElementById('stream_highlights').innerHTML = '<span class="typing-effect">正在分析营养亮点...</span>';
+        document.getElementById('stream_concerns').innerHTML = '<span class="typing-effect">正在分析注意事项...</span>';
+        
+        // 模拟流式分析过程
+        setTimeout(() => {
+            // 第一步：显示营养数据
+            simulateStreamingNutrition(description);
+        }, 500);
+        
+        setTimeout(() => {
+            // 第二步：显示识别的食物
+            simulateStreamingFoods(description);
+        }, 1500);
+        
+        setTimeout(() => {
+            // 第三步：显示营养亮点
+            simulateStreamingHighlights();
+        }, 2500);
+        
+        setTimeout(() => {
+            // 第四步：显示注意事项
+            simulateStreamingConcerns();
+        }, 3500);
+        
+        setTimeout(() => {
+            // 完成分析
+            completeStreamingAnalysis();
+        }, 4500);
+    }
+    
+    // 模拟流式营养数据显示
+    function simulateStreamingNutrition(description) {
+        const analysis = simulateAIAnalysis(description);
+        
+        // 逐个显示营养数据
+        setTimeout(() => {
+            document.getElementById('stream_calories').textContent = Math.round(analysis.totalCalories);
+            document.getElementById('stream_calories').classList.add('streaming-text');
+        }, 200);
+        
+        setTimeout(() => {
+            document.getElementById('stream_protein').textContent = Math.round(analysis.totalProtein * 10) / 10;
+            document.getElementById('stream_protein').classList.add('streaming-text');
+        }, 400);
+        
+        setTimeout(() => {
+            document.getElementById('stream_carbs').textContent = Math.round(analysis.totalCarbs * 10) / 10;
+            document.getElementById('stream_carbs').classList.add('streaming-text');
+        }, 600);
+        
+        setTimeout(() => {
+            document.getElementById('stream_fat').textContent = Math.round(analysis.totalFat * 10) / 10;
+            document.getElementById('stream_fat').classList.add('streaming-text');
+        }, 800);
+        
+        // 存储分析结果到隐藏字段
+        document.getElementById('hidden_calories').value = Math.round(analysis.totalCalories);
+        document.getElementById('hidden_protein').value = Math.round(analysis.totalProtein * 10) / 10;
+        document.getElementById('hidden_carbs').value = Math.round(analysis.totalCarbs * 10) / 10;
+        document.getElementById('hidden_fat').value = Math.round(analysis.totalFat * 10) / 10;
+        document.getElementById('hidden_food_items').value = analysis.foodItems.join('、');
+    }
+    
+    // 模拟流式食物识别显示
+    function simulateStreamingFoods(description) {
+        const analysis = simulateAIAnalysis(description);
+        
+        // 打字机效果显示食物
+        const foodsElement = document.getElementById('stream_foods');
+        const foods = analysis.foodItems.join('、');
+        
+        foodsElement.innerHTML = '';
+        let index = 0;
+        
+        function typeWriter() {
+            if (index < foods.length) {
+                foodsElement.innerHTML += foods.charAt(index);
+                index++;
+                setTimeout(typeWriter, 30);
+            } else {
+                foodsElement.classList.add('streaming-text');
+            }
+        }
+        
+        typeWriter();
+    }
+    
+    // 模拟流式营养亮点显示
+    function simulateStreamingHighlights() {
+        const highlights = [
+            '🟢 提供优质蛋白质，有助肌肉恢复',
+            '🟢 富含复合碳水化合物，提供持久能量',
+            '🟢 包含多种维生素和矿物质'
+        ];
+        
+        const element = document.getElementById('stream_highlights');
+        element.innerHTML = '';
+        
+        highlights.forEach((highlight, index) => {
+            setTimeout(() => {
+                const div = document.createElement('div');
+                div.className = 'mb-1 small streaming-text';
+                div.innerHTML = `<i class="fas fa-check-circle text-success me-1"></i>${highlight}`;
+                element.appendChild(div);
+            }, index * 800);
+        });
+    }
+    
+    // 模拟流式注意事项显示
+    function simulateStreamingConcerns() {
+        const concerns = [
+            '🟡 注意控制总热量摄入',
+            '🟡 建议搭配新鲜蔬菜增加纤维',
+            '🟡 适量饮水促进营养吸收'
+        ];
+        
+        const element = document.getElementById('stream_concerns');
+        element.innerHTML = '';
+        
+        concerns.forEach((concern, index) => {
+            setTimeout(() => {
+                const div = document.createElement('div');
+                div.className = 'mb-1 small streaming-text';
+                div.innerHTML = `<i class="fas fa-info-circle text-warning me-1"></i>${concern}`;
+                element.appendChild(div);
+            }, index * 800);
+        });
+    }
+    
+    // 完成流式分析
+    function completeStreamingAnalysis() {
+        document.getElementById('analysisSpinner').style.display = 'none';
+        document.getElementById('analysisComplete').style.display = 'block';
+        
+        analyzeButton.disabled = false;
+        analyzeButton.innerHTML = '<i class="fas fa-magic me-2"></i>🤖 AI智能分析';
+    }
+    
+    function simulateAIAnalysis(description) {
+        // 简化的AI分析模拟 - 基于关键词匹配
+        const analysis = {
+            totalCalories: 0,
+            totalProtein: 0,
+            totalCarbs: 0,
+            totalFat: 0,
+            foodItems: []
+        };
+        
+        // 食物数据库
+        const foodData = {
+            '米饭': {portion: 150, calories: 174, protein: 4, carbs: 39, fat: 0.5},
+            '面条': {portion: 100, calories: 137, protein: 4.5, carbs: 25, fat: 1.1},
+            '鸡蛋': {portion: 50, calories: 78, protein: 6.6, carbs: 0.6, fat: 5.3},
+            '牛奶': {portion: 250, calories: 135, protein: 7.5, carbs: 8.5, fat: 8},
+            '苹果': {portion: 150, calories: 81, protein: 0.3, carbs: 21, fat: 0.3},
+            '香蕉': {portion: 120, calories: 112, protein: 1.7, carbs: 27, fat: 0.2},
+            '鸡胸肉': {portion: 100, calories: 133, protein: 29, carbs: 0, fat: 1.9},
+            '面包': {portion: 50, calories: 133, protein: 4.5, carbs: 25, fat: 2.1},
+            '酸奶': {portion: 150, calories: 108, protein: 3.8, carbs: 14, fat: 4}
+        };
+        
+        // 简单的关键词匹配
+        const desc = description.toLowerCase();
+        for (const [food, data] of Object.entries(foodData)) {
+            if (desc.includes(food)) {
+                analysis.totalCalories += data.calories;
+                analysis.totalProtein += data.protein;
+                analysis.totalCarbs += data.carbs;
+                analysis.totalFat += data.fat;
+                analysis.foodItems.push(`${food}(${data.portion}g)`);
+            }
+        }
+        
+        // 如果没有匹配到，提供默认估算
+        if (analysis.foodItems.length === 0) {
+            analysis.totalCalories = 300;
+            analysis.totalProtein = 15;
+            analysis.totalCarbs = 40;
+            analysis.totalFat = 10;
+            analysis.foodItems.push('混合食物(估算)');
+        }
+        
+        return analysis;
+    }
+    
+    // 初始化图表
+    function initializeCharts() {
+        // 营养趋势图表
+        const trendCtx = document.getElementById('nutritionTrendChart').getContext('2d');
+        window.nutritionTrendChart = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                datasets: [{
+                    label: '热量摄入 (kcal)',
+                    data: [1800, 2100, 1900, 2200, 1700, 2000, 1850],
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 2500
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // 营养比例图表
+        const ratioCtx = document.getElementById('nutritionRatioChart').getContext('2d');
+        window.nutritionRatioChart = new Chart(ratioCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['蛋白质', '碳水化合物', '脂肪'],
+                datasets: [{
+                    data: [25, 45, 30],
+                    backgroundColor: ['#007bff', '#ffc107', '#28a745'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 加载今日营养数据
+    function loadDailyNutrition() {
+        fetch('/api/daily-nutrition')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateDailyOverview(data.data);
+                } else {
+                    // 使用模拟数据作为备用
+                    updateDailyOverview({
+                        calories: 0,
+                        protein: 0,
+                        carbs: 0,
+                        fat: 0
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('加载今日营养数据失败:', error);
+                // 使用模拟数据作为备用
+                updateDailyOverview({
+                    calories: 0,
+                    protein: 0,
+                    carbs: 0,
+                    fat: 0
+                });
+            });
+    }
+    
+    // 更新今日概览
+    function updateDailyOverview(data) {
+        document.getElementById('daily_calories').textContent = data.calories || 0;
+        document.getElementById('daily_protein').textContent = (data.protein || 0).toFixed(1);
+        document.getElementById('daily_carbs').textContent = data.carbs || 0;
+        document.getElementById('daily_fat').textContent = data.fat || 0;
+        
+        // 更新进度条
+        document.getElementById('calories_progress').style.width = `${Math.min((data.calories / 2000) * 100, 100)}%`;
+        document.getElementById('protein_progress').style.width = `${Math.min((data.protein / 80) * 100, 100)}%`;
+        document.getElementById('carbs_progress').style.width = `${Math.min((data.carbs / 200) * 100, 100)}%`;
+        document.getElementById('fat_progress').style.width = `${Math.min((data.fat / 65) * 100, 100)}%`;
+    }
+    
+    // 趋势切换功能
+    document.querySelectorAll('input[name="trendRange"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                loadTrendData(this.id);
+            }
+        });
+    });
+    
+    // 加载趋势数据
+    function loadTrendData(range) {
+        const rangeMap = {
+            'weekTrend': 'week',
+            'monthTrend': 'month',
+            'historyTrend': 'history'
+        };
+        
+        const apiRange = rangeMap[range] || 'week';
+        
+        fetch(`/api/nutrition-trends?range=${apiRange}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新图表
+                    window.nutritionTrendChart.data.labels = data.data.labels;
+                    window.nutritionTrendChart.data.datasets[0].data = data.data.calories;
+                    window.nutritionTrendChart.update();
+                } else {
+                    console.error('获取趋势数据失败:', data.error);
+                    // 使用备用数据
+                    loadFallbackTrendData(range);
+                }
+            })
+            .catch(error => {
+                console.error('趋势数据API请求失败:', error);
+                // 使用备用数据
+                loadFallbackTrendData(range);
+            });
+    }
+    
+    // 备用趋势数据
+    function loadFallbackTrendData(range) {
+        let labels, data;
+        
+        switch(range) {
+            case 'weekTrend':
+                labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+                data = [1800, 2100, 1900, 2200, 1700, 2000, 1850];
+                break;
+            case 'monthTrend':
+                labels = ['第1周', '第2周', '第3周', '第4周'];
+                data = [1950, 2050, 1900, 2100];
+                break;
+            case 'historyTrend':
+                labels = ['1月', '2月', '3月', '4月', '5月', '6月'];
+                data = [2000, 1950, 2100, 1850, 1950, 2000];
+                break;
+        }
+        
+        // 更新图表
+        window.nutritionTrendChart.data.labels = labels;
+        window.nutritionTrendChart.data.datasets[0].data = data;
+        window.nutritionTrendChart.update();
+    }
+    
+    // 根据当前时间设置默认餐次
+    const currentHour = new Date().getHours();
+    let defaultMealType = 'breakfast';
+    
+    if (currentHour >= 6 && currentHour < 10) {
+        defaultMealType = 'breakfast';
+    } else if (currentHour >= 11 && currentHour < 14) {
+        defaultMealType = 'lunch';
+    } else if (currentHour >= 17 && currentHour < 21) {
+        defaultMealType = 'dinner';
+    } else {
+        defaultMealType = 'snack';
+    }
+    
+    document.getElementById(defaultMealType).checked = true;
+    
+    // 表单验证：确保AI分析完成后才能提交
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const hiddenCalories = document.getElementById('hidden_calories').value;
+        if (!hiddenCalories || hiddenCalories === '0') {
+            e.preventDefault();
+            alert('请先点击"AI智能分析"按钮分析食物信息');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

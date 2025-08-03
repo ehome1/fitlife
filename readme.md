@@ -1,153 +1,198 @@
-# Fogsight (雾象) [**English**](./readme_en.md) | [**中文**](./readme.md)
+# FitLife - 智能健身管理系统
 
+一个基于Flask的智能健身和营养管理Web应用，集成Google Gemini AI提供个性化的饮食和运动分析。
 
-<p align="center">
-  <img src="https://github.com/hamutama/caimaopics/raw/main/fogsight/logos/fogsight_logo_white_bg.png"
-       alt="Fogsight Logo"
-       width="300">
-</p>
+## 🌟 主要功能
 
-**雾象是一款由大型语言模型（LLM）驱动的动画引擎 agent 。用户输入抽象概念或词语，雾象会将其转化为高水平的生动动画。**
+- **用户管理**：注册、登录、个人资料设置
+- **目标设定**：个性化健身目标管理  
+- **饮食记录**：智能饮食分析，营养成分计算
+- **运动记录**：运动追踪，卡路里消耗计算
+- **进度监控**：数据可视化，趋势分析
+- **AI分析**：基于Gemini AI的智能营养和运动建议
+- **管理后台**：AI Prompt模板管理
 
-将雾象部署在本地后，您只需输入词语，点击生成，便可得到动画。
+## 🚀 在线演示
 
+- 前端网站：[即将部署]
+- 管理后台：[即将部署]/admin
 
-<p align="center">
-  <img src="https://github.com/hamutama/caimaopics/raw/main/fogsight/1.png"
-       alt="UI 截图"
-       width="550">
-</p>
+## 🛠 技术栈
 
-我们设计了易用的语言用户界面（Language User Interface），用户也可以**进一步轻松编辑或改进生成动画，做到言出法随**。
+- **后端**：Flask, SQLAlchemy, Flask-Login
+- **前端**：Bootstrap 5, Chart.js, JavaScript
+- **数据库**：SQLite (开发) / MySQL (生产)
+- **AI集成**：Google Gemini API
+- **部署**：Vercel + PlanetScale
+- **样式**：CSS Grid, 响应式设计
 
-雾象，意为 **“在模糊智能中的具象”**。*雾象是 WaytoAGI 开源计划项目成员。 WaytoAGI， 让更多人因 AI 而强大*
-
-
-## 动画示例
-
-以下为 Fogsight AI 生成的动画示例，点击以跳转并查看
-
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://www.bilibili.com/video/BV1PXgKzBEyN">
-        <img src="https://github.com/hamutama/caimaopics/raw/main/fogsight/thumbnails/entropy_increase_thumbnail.png" width="350"><br>
-        <strong>The Law of Increasing Entropy (Physics)</strong><br>
-        <strong>熵增定律 (物理学)</strong><br>
-        <em>输入: 熵增定律</em>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://www.bilibili.com/video/BV1yXgKzqE42">
-        <img src="https://github.com/hamutama/caimaopics/raw/main/fogsight/thumbnails/euler_formula_thumbnail.png" width="350"><br>
-        <strong>Euler's Polyhedron Formula (Mathematics)</strong><br>
-        <strong>欧拉多面体定理 (数学)</strong><br>
-        <em>输入: 欧拉定理</em>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://www.bilibili.com/video/BV1sQgKzMEox">
-        <img src="https://github.com/hamutama/caimaopics/raw/main/fogsight/thumbnails/bubble_sort_thumbnail.png" width="350"><br>
-        <strong>Bubble Sort (Computer Science)</strong><br>
-        <strong>冒泡排序 (计算机科学)</strong><br>
-        <em>输入: 冒泡排序</em>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://www.bilibili.com/video/BV1yQgKzMEo6">
-        <img src="https://github.com/hamutama/caimaopics/raw/main/fogsight/thumbnails/affordance_thumbnail.png" width="350"><br>
-        <strong>Affordance (Design)</strong><br>
-        <strong>可供性 (设计学)</strong><br>
-        <em>输入: affordance in design</em>
-      </a>
-    </td>
-  </tr>
-</table>
-
-## 核心功能
-
-* **概念即影像**: 输入一个主题，Fogsight 将为您生成一部叙事完整的高水平动画，包含双语旁白与电影级的视觉质感。  
-* **智能编排**: Fogsight 的核心是其强大的LLM驱动的编排能力。从旁白、视觉元素到动态效果，AI 将自动完成整个创作流程，一气呵成。  
-* **语言用户界面 (LUI)**: 通过与 AI 的多轮对话，您可以对动画进行精准调优和迭代，直至达到您心中最理想的艺术效果。  
-
-## 快速上手
+## 📦 本地开发
 
 ### 环境要求
 
-* Python 3.9+  
-* 一个现代网络浏览器 (如 Chrome, Firefox, Edge)  
-* 大语言模型的 API 密钥。我们推荐您使用 Google Gemini 2.5。  
+- Python 3.8+
+- pip
 
-### 安装与运行
+### 快速开始
 
-1. **克隆代码仓库:**
-   ```bash
-   git clone https://github.com/fogsightai/fogsight.git
-   cd fogsight
-   ```
+1. **克隆项目**
+```bash
+git clone <repository-url>
+cd fitlife
+```
 
-2. **安装依赖:**
+2. **创建虚拟环境**
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# 或
+venv\Scripts\activate     # Windows
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+3. **安装依赖**
+```bash
+pip install -r requirements.txt
+```
 
-3. **配置API密钥:**
+4. **配置环境变量**
+```bash
+cp .env.example .env
+# 编辑 .env 文件，填入您的 Gemini API 密钥
+```
 
-   ```bash
-   cp demo-credentials.json credentials.json
-   # 复制 demo-credentials.json 文件并重命名为 credentials.json
-   # 编辑 credentials.json 文件，填入您的 API_KEY 和 BASE_URL。
-   # **请注意**，我们使用的是与 OpenAI 兼容的 SDK，但您仍应使用Gemini 2.5 pro
-   ```
+5. **初始化数据库**
+```bash
+python init_db.py
+```
 
-4. **一键启动:**
+6. **启动应用**
+```bash
+python start.py
+```
 
-   ```bash
-   python start_fogsight.py
-   # 运行 start_fogsight.py 脚本
-   # 它将自动启动后端服务并在浏览器中自动打开 http://127.0.0.1:8000
-   ```
+应用将在 http://127.0.0.1:5000 启动
 
-5. **开始创作！**
-   在页面中输入一个主题（例如“冒泡排序”），然后等待结果生成。
+## 🌐 云端部署
 
-## 联系我们/加入群聊
+本项目支持一键部署到 Vercel + PlanetScale。
 
-请访问[此链接](https://fogsightai.feishu.cn/wiki/WvODwyUr1iSAe0kEyKfcpqvynGc?from=from_copylink)联系我们或加入交流群。
+### 部署步骤
 
-## Contributors
+1. **GitHub设置**
+   - 将代码推送到GitHub仓库
+   
+2. **PlanetScale数据库**
+   - 创建PlanetScale账户
+   - 创建新数据库
+   - 获取连接字符串
 
-### 高校
+3. **Vercel部署**
+   - 连接GitHub仓库到Vercel
+   - 配置环境变量：
+     - `GEMINI_API_KEY`：您的Gemini API密钥
+     - `DATABASE_URL`：PlanetScale连接字符串
+     - `SECRET_KEY`：Flask密钥
+   - 部署完成
 
-* [@taited](https://taited.github.io/) - 香港中文大学（深圳） 博士生
-* [@yjydya](https://github.com/ydyjya) - 南洋理工大学 博士生
+### 环境变量配置
 
-### WaytoAGI 社区
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+DATABASE_URL=mysql://username:password@host:port/database
+SECRET_KEY=your_very_secure_secret_key_here
+VERCEL=1
+```
 
-* [@richkatchen 陈财猫](https://okjk.co/enodyA) - WaytoAGI 社区成员
-* [@kk](https://okjk.co/zC8myE) - WaytoAGI 社区成员
+## 📁 项目结构
 
-### Index Future Lab
+```
+fitlife/
+├── app.py                 # 主应用文件
+├── wsgi.py               # WSGI配置
+├── init_db.py            # 数据库初始化
+├── start.py              # 开发服务器启动
+├── requirements.txt       # Python依赖
+├── vercel.json           # Vercel部署配置
+├── .env.example          # 环境变量示例
+├── templates/            # HTML模板
+│   ├── base.html
+│   ├── index.html
+│   ├── login.html
+│   ├── register.html
+│   ├── profile_setup.html
+│   ├── goal_setup.html
+│   ├── meal_log.html
+│   ├── exercise_log.html
+│   ├── progress.html
+│   ├── dashboard.html
+│   └── admin/
+│       ├── base.html
+│       ├── dashboard.html
+│       └── prompts.html
+└── static/              # 静态文件
+    └── (已移除，使用CDN)
+```
 
-* [何淋 (@Lin he)](https://github.com/zerohe2001)
+## 🎯 核心功能
 
-### AI 探索家
+### 智能饮食分析
+- 自然语言饮食描述识别
+- 精确营养成分计算
+- 个性化健康评分
+- 营养平衡分析
+- 实时建议推荐
 
-* [黄小刀 (@Xiaodao Huang)](https://okjk.co/CkFav6)
+### 运动追踪
+- 多种运动类型支持
+- 基于个人资料的卡路里计算
+- 运动强度评估
+- 个性化运动建议
 
-### 独立开发者与 AI 艺术家
+### 数据可视化
+- Chart.js图表展示
+- 营养趋势分析
+- 进度监控仪表板
+- 响应式设计
 
-* [@shuyan-5200](https://github.com/shuyan-5200)
-* [王如玥 (@Ruyue Wang)](https://github.com/Moonywang)
-* [@Jack-the-Builder](https://github.com/Jack-the-Builder)
-* [@xiayurain95](https://github.com/xiayurain95)
-* [@Lixin Cai 蔡李鑫](https://github.com/Lixin-Cai)
+## 🔧 管理功能
 
-## 开源许可
+### AI Prompt管理
+- 饮食分析模板定制
+- 运动分析模板定制
+- 实时预览功能
+- 模板版本管理
 
-本项目基于 MIT 许可证开源。
-不过，如果您愿意在引用本项目时加上我们的署名与指向本项目的链接，我们会非常感谢 😊。
+## 🚨 注意事项
+
+- 确保Gemini API密钥有效
+- 生产环境请使用强密码作为SECRET_KEY
+- 数据库连接配置正确
+- 定期备份用户数据
+
+## 📈 更新日志
+
+### v2.0.0 (2024-08-03)
+- ✨ 完全重构饮食记录界面
+- 🎨 新增流式AI分析显示
+- 📊 集成Chart.js数据可视化
+- 🌐 支持云端部署
+- 🗄️ 数据库迁移支持
+
+### v1.0.0 (2024-08-01)
+- 🎉 项目初始版本
+- 👤 用户系统完成
+- 🍎 饮食记录功能
+- 🏃 运动追踪功能
+- 🤖 AI分析集成
+
+## 📞 技术支持
+
+如有问题，请查看：
+1. 应用日志输出
+2. 浏览器开发者工具
+3. 数据库连接状态
+4. API密钥配置
+
+## 📄 许可证
+
+本项目仅供学习和个人使用。

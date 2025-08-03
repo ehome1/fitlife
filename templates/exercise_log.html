@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}运动打卡 - 健身饮食管理{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h4 class="mb-0">
+                    <i class="fas fa-running me-2"></i>记录运动
+                </h4>
+                <p class="text-muted mb-0">记录你的运动情况，系统会自动计算消耗的卡路里</p>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="exercise_date" class="form-label">运动日期</label>
+                        <input type="date" class="form-control" id="exercise_date" name="exercise_date" required>
+                        <div class="form-text">选择运动的日期</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="exercise_type" class="form-label">运动类型</label>
+                        <select class="form-select" id="exercise_type" name="exercise_type" required>
+                            <option value="">选择运动类型</option>
+                            <option value="cardio">有氧运动</option>
+                            <option value="strength">力量训练</option>
+                            <option value="yoga">瑜伽</option>
+                            <option value="sports">球类运动</option>
+                            <option value="walking">步行</option>
+                            <option value="running">跑步</option>
+                            <option value="cycling">骑行</option>
+                            <option value="swimming">游泳</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="exercise_name" class="form-label">具体运动</label>
+                        <input type="text" class="form-control" id="exercise_name" name="exercise_name" 
+                               placeholder="如：晨跑、哑铃训练、瑜伽等" required>
+                        <div class="form-text">请输入具体的运动名称</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="duration" class="form-label">持续时间</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="duration" name="duration" 
+                                   min="1" max="300" required>
+                            <span class="input-group-text">分钟</span>
+                        </div>
+                        <div class="form-text">系统将根据运动类型和时长自动判断运动强度</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="calories_preview" class="form-label">预计消耗</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="calories_preview" readonly 
+                                   placeholder="填写信息后显示预计消耗">
+                            <span class="input-group-text">kcal</span>
+                        </div>
+                        <div class="form-text">根据你的体重和运动强度自动计算</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-primary" id="analyzeExercise">
+                            <i class="fas fa-robot me-2"></i>AI运动分析
+                        </button>
+                        <div class="form-text">获取专业的个性化运动分析和建议</div>
+                    </div>
+                    
+                    <!-- AI分析结果区域 -->
+                    <div class="mb-3" id="exerciseResults" style="display: none;">
+                        <label class="form-label">
+                            <i class="fas fa-robot me-2 text-primary"></i>AI运动分析结果
+                        </label>
+                        
+                        <div id="exerciseAnalysisLoading" style="display: none;" class="text-center p-4">
+                            <div class="spinner-border text-primary me-2"></div>
+                            <span class="text-primary">AI正在分析中...</span>
+                        </div>
+                        
+                        <div id="exerciseAnalysisResults" class="exercise-analysis-results">
+                            <!-- 基础运动数据卡片 -->
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-gradient-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-fire me-2"></i>运动数据分析
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-6 col-md-4">
+                                            <div class="exercise-metric">
+                                                <div class="metric-value text-danger" id="calories_burned">0</div>
+                                                <div class="metric-label">
+                                                    <i class="fas fa-fire me-1"></i>消耗热量(kcal)
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="exercise-metric">
+                                                <div class="metric-value text-warning" id="intensity_display">中等强度</div>
+                                                <div class="metric-label">
+                                                    <i class="fas fa-tachometer-alt me-1"></i>运动强度
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="exercise-metric">
+                                                <div class="fitness-score-mini">
+                                                    <span class="score-value" id="fitness_score">0</span>
+                                                    <small class="score-max">/10</small>
+                                                </div>
+                                                <div class="metric-label">
+                                                    <i class="fas fa-star me-1"></i>运动评分
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-heart me-1"></i>
+                                                心率区间: <span id="heart_rate_zone">有氧区间</span>
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-battery-three-quarters me-1"></i>
+                                                能量系统: <span id="energy_system">有氧系统</span>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 个性化反馈卡片 -->
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-gradient-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user-check me-2"></i>个性化评估
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="feedback-item">
+                                        <span class="feedback-label">适合程度:</span>
+                                        <span class="feedback-value" id="suitable_level">适合</span>
+                                    </div>
+                                    <div class="feedback-item">
+                                        <span class="feedback-label">年龄建议:</span>
+                                        <span class="feedback-text" id="age_considerations">适合当前年龄段</span>
+                                    </div>
+                                    <div class="feedback-item">
+                                        <span class="feedback-label">活动匹配:</span>
+                                        <span class="feedback-text" id="fitness_level_match">与活动水平匹配</span>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h6 class="text-success">
+                                            <i class="fas fa-bullseye me-1"></i>主要益处
+                                        </h6>
+                                        <div class="benefits-container" id="primary_benefits">
+                                            <span class="badge bg-success me-1 mb-1">提高心肺功能</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h6 class="text-primary">
+                                            <i class="fas fa-dumbbell me-1"></i>锻炼肌群
+                                        </h6>
+                                        <div class="muscles-container" id="muscle_groups">
+                                            <span class="badge bg-primary me-1 mb-1">全身肌群</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 专业建议卡片 -->
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-gradient-warning text-dark">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-lightbulb me-2"></i>专业建议
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-forward me-1"></i>下次训练</h6>
+                                                <p class="small" id="next_workout">保持当前强度</p>
+                                            </div>
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-clock me-1"></i>时长建议</h6>
+                                                <p class="small" id="duration_suggestion">保持当前时长</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-adjust me-1"></i>强度调整</h6>
+                                                <p class="small" id="intensity_adjustment">可适当增加强度</p>
+                                            </div>
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-bed me-1"></i>恢复建议</h6>
+                                                <p class="small" id="recovery_advice">充分休息</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="alert alert-info mt-3" role="alert">
+                                        <i class="fas fa-quote-left me-2"></i>
+                                        <span id="motivation_message">坚持就是胜利！</span>
+                                    </div>
+                                    
+                                    <div id="health_alerts_section" class="mt-3" style="display: none;">
+                                        <h6 class="text-warning">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>健康提醒
+                                        </h6>
+                                        <ul class="list-unstyled" id="health_alerts">
+                                            <li><i class="fas fa-info-circle text-warning me-2"></i>注意适度运动</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">运动感受 <span class="text-muted">(可选)</span></label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="记录今天的运动感受、心情或其他想法..."></textarea>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-gradient">
+                            <i class="fas fa-check me-2"></i>记录运动
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>最近运动记录
+                </h5>
+            </div>
+            
+            <div class="card-body">
+                {% if recent_exercises %}
+                    <div class="exercise-list">
+                        {% for exercise in recent_exercises %}
+                        <div class="exercise-item mb-3 p-3 border rounded">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ exercise.exercise_name }}</h6>
+                                    <div class="d-flex flex-wrap gap-3 text-muted small">
+                                        <span>
+                                            <i class="fas fa-tag me-1"></i>{{ exercise.exercise_type_display }}
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-clock me-1"></i>{{ exercise.duration }}分钟
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-tachometer-alt me-1"></i>{{ exercise.intensity_display }}
+                                        </span>
+                                    </div>
+                                    {% if exercise.notes %}
+                                    <div class="mt-2 text-muted small">
+                                        <i class="fas fa-sticky-note me-1"></i>{{ exercise.notes }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="text-end ms-3">
+                                    <div class="fw-bold text-danger fs-5">{{ exercise.calories_burned }}</div>
+                                    <small class="text-muted">kcal</small>
+                                    <div class="small text-muted">{{ exercise.date.strftime('%m-%d') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-dumbbell fs-1 text-muted mb-3"></i>
+                        <p class="text-muted">还没有运动记录</p>
+                        <p class="small text-muted">开始记录你的第一次运动吧！</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 智能强度判断说明卡片 -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-brain me-2"></i>智能强度判断
+                </h6>
+                <div class="small text-muted">
+                    <p class="mb-2">系统根据运动类型和持续时长自动判断运动强度：</p>
+                    <ul class="mb-0">
+                        <li><strong>低强度</strong>：时长较短，轻度运动</li>
+                        <li><strong>中等强度</strong>：常规时长，标准运动</li>
+                        <li><strong>高强度</strong>：时长较长，高强度训练</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const exerciseType = document.getElementById('exercise_type');
+    const duration = document.getElementById('duration');
+    const caloriesPreview = document.getElementById('calories_preview');
+    const exerciseDate = document.getElementById('exercise_date');
+    
+    // 设置默认日期为今天
+    if (!exerciseDate.value) {
+        exerciseDate.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // AI运动分析功能
+    const analyzeButton = document.getElementById('analyzeExercise');
+    const exerciseResults = document.getElementById('exerciseResults');
+    const exerciseAnalysisLoading = document.getElementById('exerciseAnalysisLoading');
+    
+    analyzeButton.addEventListener('click', function() {
+        const exerciseTypesValue = exerciseType.value;
+        const exerciseName = document.getElementById('exercise_name').value.trim();
+        const durationValue = duration.value;
+        
+        if (!exerciseTypesValue || !exerciseName || !durationValue) {
+            alert('请先填写完整的运动信息');
+            return;
+        }
+        
+        // 显示加载状态
+        exerciseResults.style.display = 'block';
+        exerciseAnalysisLoading.style.display = 'block';
+        analyzeButton.disabled = true;
+        analyzeButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>分析中...';
+        
+        // 调用AI运动分析API
+        fetch('/api/analyze-exercise', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                exercise_type: exerciseTypesValue,
+                exercise_name: exerciseName,
+                duration: parseInt(durationValue)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayExerciseAnalysisResults(data.data);
+                // 更新热量预览
+                caloriesPreview.value = data.data.calories_burned;
+            } else {
+                alert('AI分析失败：' + (data.error || '未知错误'));
+            }
+            
+            exerciseAnalysisLoading.style.display = 'none';
+            analyzeButton.disabled = false;
+            analyzeButton.innerHTML = '<i class="fas fa-robot me-2"></i>重新分析';
+        })
+        .catch(error => {
+            console.error('API调用错误:', error);
+            alert('网络错误，请稍后重试');
+            
+            exerciseAnalysisLoading.style.display = 'none';
+            analyzeButton.disabled = false;
+            analyzeButton.innerHTML = '<i class="fas fa-robot me-2"></i>AI运动分析';
+        });
+    });
+    
+    // 体重数据（从用户资料获取，这里使用默认值）
+    const userWeight = {{ current_user.profile.weight if current_user.profile else 70 }};
+    
+    // 智能MET值表 - 根据运动类型和时长自动判断强度
+    function getSmartMET(exerciseType, duration) {
+        const metConfig = {
+            'cardio': { base: 7.0, lowThreshold: 20, highThreshold: 45 },
+            'strength': { base: 6.0, lowThreshold: 15, highThreshold: 60 },
+            'yoga': { base: 3.0, lowThreshold: 30, highThreshold: 90 },
+            'sports': { base: 8.0, lowThreshold: 30, highThreshold: 60 },
+            'walking': { base: 4.5, lowThreshold: 30, highThreshold: 60 },
+            'running': { base: 11.0, lowThreshold: 20, highThreshold: 40 },
+            'cycling': { base: 8.0, lowThreshold: 30, highThreshold: 60 },
+            'swimming': { base: 8.0, lowThreshold: 20, highThreshold: 45 }
+        };
+        
+        const config = metConfig[exerciseType] || { base: 6.0, lowThreshold: 30, highThreshold: 60 };
+        
+        // 根据时长调整强度
+        if (duration < config.lowThreshold) {
+            return config.base * 0.8; // 低强度
+        } else if (duration > config.highThreshold) {
+            return config.base * 1.3; // 高强度
+        } else {
+            return config.base; // 中等强度
+        }
+    }
+    
+    function calculateCalories() {
+        const type = exerciseType.value;
+        const dur = parseInt(duration.value);
+        
+        if (type && dur) {
+            const met = getSmartMET(type, dur);
+            const calories = Math.round(met * userWeight * (dur / 60));
+            caloriesPreview.value = calories;
+            
+            // 显示自动判断的强度
+            let intensityText = '';
+            if (met < 6) intensityText = '低强度';
+            else if (met > 10) intensityText = '高强度';
+            else intensityText = '中等强度';
+            
+            caloriesPreview.placeholder = `预计消耗 ${calories} kcal (${intensityText})`;
+        } else {
+            caloriesPreview.value = '';
+            caloriesPreview.placeholder = '填写信息后显示预计消耗';
+        }
+    }
+    
+    exerciseType.addEventListener('change', calculateCalories);
+    duration.addEventListener('input', calculateCalories);
+    
+    // 运动类型对应的常见运动名称
+    const exerciseNames = {
+        'cardio': ['有氧操', '椭圆机', '动感单车', '踏步机'],
+        'strength': ['哑铃训练', '杠铃训练', '器械训练', '自重训练'],
+        'yoga': ['哈他瑜伽', '流瑜伽', '阴瑜伽', '热瑜伽'],
+        'sports': ['篮球', '足球', '羽毛球', '乒乓球', '网球'],
+        'walking': ['快走', '散步', '爬楼梯', '徒步'],
+        'running': ['慢跑', '快跑', '间歇跑', '马拉松'],
+        'cycling': ['公路骑行', '山地骑行', '室内单车'],
+        'swimming': ['自由泳', '蛙泳', '仰泳', '蝶泳']
+    };
+    
+    exerciseType.addEventListener('change', function() {
+        const exerciseName = document.getElementById('exercise_name');
+        if (this.value && exerciseNames[this.value]) {
+            exerciseName.placeholder = `如：${exerciseNames[this.value].join('、')}`;
+        }
+    });
+    
+    function displayExerciseAnalysisResults(analysis) {
+        // 基础运动数据
+        document.getElementById('calories_burned').textContent = analysis.calories_burned || 0;
+        document.getElementById('intensity_display').textContent = analysis.intensity_level || '中等强度';
+        document.getElementById('fitness_score').textContent = analysis.fitness_score || 0;
+        
+        // 运动分析数据
+        if (analysis.exercise_analysis) {
+            document.getElementById('heart_rate_zone').textContent = analysis.exercise_analysis.heart_rate_zone || '有氧区间';
+            document.getElementById('energy_system').textContent = analysis.exercise_analysis.energy_system || '有氧系统';
+            
+            // 主要益处
+            if (analysis.exercise_analysis.primary_benefits) {
+                const benefitsContainer = document.getElementById('primary_benefits');
+                benefitsContainer.innerHTML = '';
+                analysis.exercise_analysis.primary_benefits.forEach(benefit => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-success me-1 mb-1';
+                    badge.textContent = benefit;
+                    benefitsContainer.appendChild(badge);
+                });
+            }
+            
+            // 锻炼肌群
+            if (analysis.exercise_analysis.muscle_groups) {
+                const musclesContainer = document.getElementById('muscle_groups');
+                musclesContainer.innerHTML = '';
+                analysis.exercise_analysis.muscle_groups.forEach(muscle => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-primary me-1 mb-1';
+                    badge.textContent = muscle;
+                    musclesContainer.appendChild(badge);
+                });
+            }
+        }
+        
+        // 个性化反馈
+        if (analysis.personalized_feedback) {
+            document.getElementById('suitable_level').textContent = analysis.personalized_feedback.suitable_level || '适合';
+            document.getElementById('age_considerations').textContent = analysis.personalized_feedback.age_considerations || '适合当前年龄段';
+            document.getElementById('fitness_level_match').textContent = analysis.personalized_feedback.fitness_level_match || '与活动水平匹配';
+        }
+        
+        // 专业建议
+        if (analysis.recommendations) {
+            document.getElementById('next_workout').textContent = analysis.recommendations.next_workout || '保持当前强度';
+            document.getElementById('intensity_adjustment').textContent = analysis.recommendations.intensity_adjustment || '可适当增加强度';
+            document.getElementById('duration_suggestion').textContent = analysis.recommendations.duration_suggestion || '保持当前时长';
+            document.getElementById('recovery_advice').textContent = analysis.recommendations.recovery_advice || '充分休息';
+        }
+        
+        // 激励信息
+        document.getElementById('motivation_message').textContent = analysis.motivation_message || '坚持就是胜利！';
+        
+        // 健康提醒
+        if (analysis.health_alerts && analysis.health_alerts.length > 0) {
+            const alertsSection = document.getElementById('health_alerts_section');
+            const alertsList = document.getElementById('health_alerts');
+            alertsList.innerHTML = '';
+            analysis.health_alerts.forEach(alert => {
+                const li = document.createElement('li');
+                li.innerHTML = `<i class="fas fa-info-circle text-warning me-2"></i>${alert}`;
+                alertsList.appendChild(li);
+            });
+            alertsSection.style.display = 'block';
+        } else {
+            document.getElementById('health_alerts_section').style.display = 'none';
+        }
+    }
+});
+</script>
+{% endblock %}

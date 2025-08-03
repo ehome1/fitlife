@@ -1,0 +1,243 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}用户管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin_index') }}">首页</a></li>
+<li class="breadcrumb-item active">用户管理</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="admin-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users me-2"></i>用户列表
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <div class="input-group" style="width: 300px;">
+                            <input type="text" class="form-control" placeholder="搜索用户..." id="searchUser">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>用户名</th>
+                                <th>邮箱</th>
+                                <th>个人资料</th>
+                                <th>注册时间</th>
+                                <th>活动状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users.items %}
+                            <tr>
+                                <td class="fw-bold">#{{ user.id }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-2">
+                                            {{ user.username[0].upper() }}
+                                        </div>
+                                        {{ user.username }}
+                                    </div>
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.profile %}
+                                        <span class="badge bg-success">已完善</span>
+                                        <small class="text-muted d-block">
+                                            {{ user.profile.age }}岁 | {{ user.profile.weight }}kg
+                                        </small>
+                                    {% else %}
+                                        <span class="badge bg-warning">未完善</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </td>
+                                <td>
+                                    {% set exercise_count = user.exercise_logs|length %}
+                                    {% set meal_count = user.meal_logs|length %}
+                                    {% if exercise_count > 0 or meal_count > 0 %}
+                                        <span class="badge bg-success">活跃</span>
+                                        <small class="text-muted d-block">
+                                            {{ exercise_count }}次运动 | {{ meal_count }}次饮食
+                                        </small>
+                                    {% else %}
+                                        <span class="badge bg-secondary">新用户</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="viewUser({{ user.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <a href="{{ url_for('admin_toggle_user', user_id=user.id) }}" 
+                                           class="btn btn-outline-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button class="btn btn-outline-danger" onclick="confirmDelete({{ user.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 分页 -->
+                {% if users.pages > 1 %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if users.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_users', page=users.prev_num) }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in users.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != users.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_users', page=page_num) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if users.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_users', page=users.next_num) }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户详情模态框 -->
+<div class="modal fade" id="userDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user me-2"></i>用户详情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="userDetailContent">
+                <!-- 内容将通过 JavaScript 加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(102, 126, 234, 0.05);
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function viewUser(userId) {
+    // 这里可以添加查看用户详情的逻辑
+    const modal = new bootstrap.Modal(document.getElementById('userDetailModal'));
+    document.getElementById('userDetailContent').innerHTML = `
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-2 text-muted">正在加载用户详情...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // 模拟加载用户详情
+    setTimeout(() => {
+        document.getElementById('userDetailContent').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>基本信息</h6>
+                    <p><strong>用户ID:</strong> ${userId}</p>
+                    <p><strong>状态:</strong> <span class="badge bg-success">正常</span></p>
+                </div>
+                <div class="col-md-6">
+                    <h6>活动统计</h6>
+                    <p><strong>运动记录:</strong> 0 次</p>
+                    <p><strong>饮食记录:</strong> 0 次</p>
+                </div>
+            </div>
+        `;
+    }, 1000);
+}
+
+function confirmDelete(userId) {
+    if (confirm('确定要删除这个用户吗？此操作不可逆。')) {
+        // 这里添加删除用户的逻辑
+        alert('删除功能尚未实现');
+    }
+}
+
+// 搜索功能
+document.getElementById('searchUser').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}
