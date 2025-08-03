@@ -1,6 +1,7 @@
 from flask import Flask
 import os
 from dotenv import load_dotenv
+import google.generativeai as genai
 load_dotenv()
 
 app = Flask(__name__)
