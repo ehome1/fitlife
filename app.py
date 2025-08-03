@@ -45,16 +45,15 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# 添加CSP头部以解决JavaScript执行问题
+# 移除CSP限制以确保所有JavaScript功能正常
 @app.after_request
 def after_request(response):
-    # 为开发和测试环境暂时禁用CSP限制
-    if app.config.get('DEBUG') or os.getenv('VERCEL'):
-        # 移除CSP限制以支持所有JavaScript功能
-        pass
-    else:
-        # 生产环境使用基本CSP
-        response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:;"
+    # 完全禁用CSP限制
+    response.headers.pop('Content-Security-Policy', None)
+    # 添加其他有用的安全头
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
     return response
 
 db = SQLAlchemy(app)
