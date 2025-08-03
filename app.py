@@ -1397,6 +1397,25 @@ def init_database():
     create_default_admin()
     create_default_prompts()
 
+@app.route('/init-database')
+def init_db_route():
+    """手动初始化数据库的路由"""
+    try:
+        with app.app_context():
+            init_database()
+        return """
+        <h1>✅ 数据库初始化成功！</h1>
+        <p>FitLife数据库已成功创建和配置。</p>
+        <p><a href="/">返回首页</a></p>
+        <p><a href="/admin">访问管理后台</a></p>
+        """, 200
+    except Exception as e:
+        return f"""
+        <h1>❌ 数据库初始化失败</h1>
+        <p>错误信息：{str(e)}</p>
+        <p><a href="/">返回首页</a></p>
+        """, 500
+
 if __name__ == '__main__':
     with app.app_context():
         init_database()
