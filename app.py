@@ -10,10 +10,7 @@ from dotenv import load_dotenv
 import logging
 import time
 import hashlib
-import pymysql
-
-# 为PlanetScale MySQL配置
-pymysql.install_as_MySQLdb()
+# PostgreSQL支持 - 无需特殊配置
 
 # 加载环境变量
 load_dotenv()

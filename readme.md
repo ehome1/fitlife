@@ -21,9 +21,9 @@
 
 - **后端**：Flask, SQLAlchemy, Flask-Login
 - **前端**：Bootstrap 5, Chart.js, JavaScript
-- **数据库**：SQLite (开发) / MySQL (生产)
+- **数据库**：SQLite (开发) / PostgreSQL (生产)
 - **AI集成**：Google Gemini API
-- **部署**：Vercel + PlanetScale
+- **部署**：Vercel + Neon
 - **样式**：CSS Grid, 响应式设计
 
 ## 📦 本地开发
@@ -74,23 +74,23 @@ python start.py
 
 ## 🌐 云端部署
 
-本项目支持一键部署到 Vercel + PlanetScale。
+本项目支持一键部署到 Vercel + Neon。
 
 ### 部署步骤
 
 1. **GitHub设置**
    - 将代码推送到GitHub仓库
    
-2. **PlanetScale数据库**
-   - 创建PlanetScale账户
-   - 创建新数据库
+2. **Neon数据库**
+   - 创建Neon账户（https://neon.tech）
+   - 创建新PostgreSQL数据库
    - 获取连接字符串
 
 3. **Vercel部署**
    - 连接GitHub仓库到Vercel
    - 配置环境变量：
      - `GEMINI_API_KEY`：您的Gemini API密钥
-     - `DATABASE_URL`：PlanetScale连接字符串
+     - `DATABASE_URL`：Neon PostgreSQL连接字符串
      - `SECRET_KEY`：Flask密钥
    - 部署完成
 
@@ -98,7 +98,7 @@ python start.py
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
-DATABASE_URL=mysql://username:password@host:port/database
+DATABASE_URL=postgresql://username:password@hostname:5432/database?sslmode=require
 SECRET_KEY=your_very_secure_secret_key_here
 VERCEL=1
 ```
