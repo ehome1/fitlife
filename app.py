@@ -48,8 +48,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 添加CSP头部以解决JavaScript执行问题
 @app.after_request
 def after_request(response):
-    # 设置CSP允许内联脚本和eval
-    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"
+    # 为开发和测试环境暂时禁用CSP限制
+    if app.config.get('DEBUG') or os.getenv('VERCEL'):
+        # 移除CSP限制以支持所有JavaScript功能
+        pass
+    else:
+        # 生产环境使用基本CSP
+        response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:;"
     return response
 
 db = SQLAlchemy(app)
