@@ -1402,10 +1402,15 @@ def init_db_route():
     """手动初始化数据库的路由"""
     try:
         with app.app_context():
-            init_database()
+            # 删除所有表并重新创建
+            db.drop_all()
+            db.create_all()
+            create_default_admin()
+            create_default_prompts()
         return """
         <h1>✅ 数据库初始化成功！</h1>
         <p>FitLife数据库已成功创建和配置。</p>
+        <p>默认管理员账户：admin / admin123</p>
         <p><a href="/">返回首页</a></p>
         <p><a href="/admin">访问管理后台</a></p>
         """, 200
@@ -1414,6 +1419,30 @@ def init_db_route():
         <h1>❌ 数据库初始化失败</h1>
         <p>错误信息：{str(e)}</p>
         <p><a href="/">返回首页</a></p>
+        """, 500
+
+@app.route('/reset-database')
+def reset_db_route():
+    """完全重置数据库的路由"""
+    try:
+        with app.app_context():
+            # 强制删除并重建所有表
+            db.drop_all()
+            db.create_all()
+            create_default_admin()
+            create_default_prompts()
+        return """
+        <h1>🔄 数据库重置成功！</h1>
+        <p>所有数据表已重新创建，使用最新结构。</p>
+        <p>默认管理员账户：admin / admin123</p>
+        <p><a href="/">返回首页</a></p>
+        <p><a href="/admin">访问管理后台</a></p>
+        """, 200
+    except Exception as e:
+        return f"""
+        <h1>❌ 数据库重置失败</h1>
+        <p>错误信息：{str(e)}</p>
+        <p><a href="/init-database">尝试初始化</a></p>
         """, 500
 
 if __name__ == '__main__':
