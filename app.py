@@ -752,6 +752,16 @@ def exercise_log():
     
     return render_template('exercise_log.html', recent_exercises=recent_exercises)
 
+@app.route('/meal-log-test', methods=['GET'])
+def meal_log_test():
+    """测试版饮食记录页面（无需登录）"""
+    try:
+        # 模拟用户数据
+        recent_meals = []
+        return render_template('meal_log.html', recent_meals=recent_meals)
+    except Exception as e:
+        return f"测试页面错误: {str(e)}", 500
+
 @app.route('/meal-log', methods=['GET', 'POST'])
 @login_required
 def meal_log():
@@ -1639,6 +1649,26 @@ def api_analyze_food():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/meal-log-debug')
+def meal_log_debug():
+    """调试饮食记录页面"""
+    try:
+        return """
+        <h1>🔧 饮食记录调试</h1>
+        <p>这是一个调试页面，用于测试饮食记录功能。</p>
+        <h2>错误排查：</h2>
+        <ul>
+            <li>✅ 应用启动正常</li>
+            <li>✅ 路由可访问</li>
+            <li>检查用户登录状态...</li>
+        </ul>
+        <p><a href="/login">前往登录页面</a></p>
+        <p><a href="/register">前往注册页面</a></p>
+        <p><a href="/">返回首页</a></p>
+        """, 200
+    except Exception as e:
+        return f"调试页面错误: {str(e)}", 500
 
 if __name__ == '__main__':
     with app.app_context():
