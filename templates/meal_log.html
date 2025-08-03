@@ -193,6 +193,14 @@
                                     <div class="bg-light p-2 rounded" id="stream_foods">正在识别...</div>
                                 </div>
                                 
+                                <!-- 健康评分 -->
+                                <div class="mb-3 text-center">
+                                    <h6 class="text-info mb-2">🏆 健康评分</h6>
+                                    <div id="stream_score">
+                                        <span class="badge bg-secondary">分析中...</span>
+                                    </div>
+                                </div>
+                                
                                 <!-- 健康分析流式输出 -->
                                 <div class="row">
                                     <div class="col-md-6">
@@ -554,35 +562,103 @@ document.addEventListener('DOMContentLoaded', function() {
     // 流式分析函数
     function startStreamingAnalysis(description) {
         // 重置显示内容
-        document.getElementById('stream_foods').innerHTML = '<span class="typing-effect">正在识别食物...</span>';
-        document.getElementById('stream_highlights').innerHTML = '<span class="typing-effect">正在分析营养亮点...</span>';
-        document.getElementById('stream_concerns').innerHTML = '<span class="typing-effect">正在分析注意事项...</span>';
+        document.getElementById('stream_foods').innerHTML = '<span class="typing-effect">🤖 正在使用Gemini-2.5-Flash分析食物...</span>';
+        document.getElementById('stream_highlights').innerHTML = '<span class="typing-effect">🔍 正在分析营养亮点...</span>';
+        document.getElementById('stream_concerns').innerHTML = '<span class="typing-effect">⚠️ 正在分析注意事项...</span>';
         
-        // 模拟流式分析过程
+        // 调用真正的AI API
+        fetch('/api/analyze-food', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                description: description
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 使用真实的AI分析结果
+                displayRealAIResults(data.data);
+            } else {
+                throw new Error(data.error || 'AI分析失败');
+            }
+        })
+        .catch(error => {
+            console.error('AI分析错误:', error);
+            // 显示错误信息
+            document.getElementById('stream_foods').innerHTML = '<span class="text-danger">❌ AI分析失败: ' + error.message + '</span>';
+            document.getElementById('stream_highlights').innerHTML = '<span class="text-muted">请检查网络连接或稍后重试</span>';
+            document.getElementById('stream_concerns').innerHTML = '<span class="text-muted">使用基本估算替代</span>';
+            
+            // 启用按钮
+            analyzeButton.disabled = false;
+            analyzeButton.innerHTML = '<i class="fas fa-magic me-2"></i>🤖 AI智能分析';
+            document.getElementById('analysisSpinner').style.display = 'none';
+        });
+    }
+    
+    // 显示真实的AI分析结果
+    function displayRealAIResults(analysisData) {
+        // 更新营养数据
         setTimeout(() => {
-            // 第一步：显示营养数据
-            simulateStreamingNutrition(description);
+            document.getElementById('stream_calories').textContent = analysisData.total_calories || 0;
+            document.getElementById('stream_protein').textContent = analysisData.total_protein || 0;
+            document.getElementById('stream_carbs').textContent = analysisData.total_carbs || 0;
+            document.getElementById('stream_fat').textContent = analysisData.total_fat || 0;
+            
+            // 更新隐藏表单字段
+            document.getElementById('hidden_calories').value = analysisData.total_calories || 0;
+            document.getElementById('hidden_protein').value = analysisData.total_protein || 0;
+            document.getElementById('hidden_carbs').value = analysisData.total_carbs || 0;
+            document.getElementById('hidden_fat').value = analysisData.total_fat || 0;
+            document.getElementById('hidden_food_items').value = JSON.stringify(analysisData.food_items || []);
         }, 500);
         
+        // 显示识别的食物
         setTimeout(() => {
-            // 第二步：显示识别的食物
-            simulateStreamingFoods(description);
-        }, 1500);
+            const foodItems = analysisData.food_items || ['未识别食物'];
+            document.getElementById('stream_foods').innerHTML = 
+                '<div class="fade-in">' + 
+                foodItems.map(item => `<span class="badge bg-primary me-1 mb-1">${item}</span>`).join('') + 
+                '</div>';
+        }, 1200);
         
+        // 显示营养亮点
         setTimeout(() => {
-            // 第三步：显示营养亮点
-            simulateStreamingHighlights();
-        }, 2500);
+            const highlights = analysisData.health_highlights || ['提供基础营养'];
+            document.getElementById('stream_highlights').innerHTML = 
+                '<div class="fade-in">' + 
+                highlights.map(item => `<small class="text-success d-block">✅ ${item}</small>`).join('') + 
+                '</div>';
+        }, 2000);
         
+        // 显示健康建议
         setTimeout(() => {
-            // 第四步：显示注意事项
-            simulateStreamingConcerns();
+            const suggestions = analysisData.suggestions || ['注意营养均衡'];
+            document.getElementById('stream_concerns').innerHTML = 
+                '<div class="fade-in">' + 
+                suggestions.map(item => `<small class="text-warning d-block">💡 ${item}</small>`).join('') + 
+                '</div>';
+        }, 2800);
+        
+        // 显示健康评分和完成分析
+        setTimeout(() => {
+            const healthScore = analysisData.health_score || 5;
+            let scoreColor = 'success';
+            if (healthScore < 4) scoreColor = 'danger';
+            else if (healthScore < 7) scoreColor = 'warning';
+            
+            document.getElementById('stream_score').innerHTML = 
+                `<span class="badge bg-${scoreColor} fs-6">${healthScore}/10</span>`;
+            
+            // 分析完成
+            document.getElementById('analysisSpinner').style.display = 'none';
+            document.getElementById('analysisComplete').style.display = 'block';
+            analyzeButton.disabled = false;
+            analyzeButton.innerHTML = '<i class="fas fa-edit me-2"></i>重新分析';
         }, 3500);
-        
-        setTimeout(() => {
-            // 完成分析
-            completeStreamingAnalysis();
-        }, 4500);
     }
     
     // 模拟流式营养数据显示

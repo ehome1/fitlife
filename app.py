@@ -1612,6 +1612,34 @@ def clear_cache():
     except Exception as e:
         return f"缓存清理失败: {str(e)}", 500
 
+@app.route('/api/analyze-food', methods=['POST'])
+def api_analyze_food():
+    """AJAX API端点：分析食物描述"""
+    try:
+        data = request.get_json()
+        if not data or 'description' not in data:
+            return jsonify({'error': '缺少食物描述'}), 400
+        
+        food_description = data['description'].strip()
+        if not food_description:
+            return jsonify({'error': '食物描述不能为空'}), 400
+        
+        # 调用真正的AI分析
+        result = analyze_food_with_ai(food_description)
+        
+        # 返回JSON格式的分析结果
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"API食物分析失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     with app.app_context():
         init_database()
