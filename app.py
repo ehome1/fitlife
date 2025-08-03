@@ -1478,34 +1478,122 @@ def test_ai():
         test_food = "一碗白米饭，一盘西红柿炒鸡蛋，一小碗紫菜蛋花汤"
         result = analyze_food_with_ai(test_food)
         
+        # 格式化营养信息显示
+        nutrition_html = f"""
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3>📊 营养成分分析</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 15px 0;">
+                <div><strong>总热量:</strong> {result.get('total_calories', 0)} kcal</div>
+                <div><strong>蛋白质:</strong> {result.get('total_protein', 0)} g</div>
+                <div><strong>碳水化合物:</strong> {result.get('total_carbs', 0)} g</div>
+                <div><strong>脂肪:</strong> {result.get('total_fat', 0)} g</div>
+            </div>
+            <div style="margin: 15px 0;">
+                <strong>健康评分:</strong> 
+                <span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 15px;">
+                    {result.get('health_score', 0)}/10
+                </span>
+            </div>
+        </div>
+        """
+        
+        food_items = result.get('food_items', [])
+        food_items_html = "<ul>" + "".join([f"<li>{item}</li>" for item in food_items]) + "</ul>"
+        
+        highlights = result.get('health_highlights', [])
+        highlights_html = "<ul>" + "".join([f"<li>✅ {item}</li>" for item in highlights]) + "</ul>"
+        
+        suggestions = result.get('suggestions', [])
+        suggestions_html = "<ul>" + "".join([f"<li>💡 {item}</li>" for item in suggestions]) + "</ul>"
+        
         return f"""
-        <h1>🤖 AI功能测试</h1>
-        <h2>测试食物：{test_food}</h2>
-        <h3>分析结果：</h3>
-        <pre>{json.dumps(result, ensure_ascii=False, indent=2)}</pre>
-        <hr>
-        <h3>功能说明：</h3>
-        <ul>
-            <li>✅ 使用Gemini-2.5-Flash模型</li>
-            <li>✅ 中文食物识别优化</li>
-            <li>✅ 精确营养成分计算</li>
-            <li>✅ 中式份量估算</li>
-        </ul>
-        <p><a href="/">返回首页</a></p>
-        <p><a href="/clear-cache">清除AI缓存</a></p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>AI功能测试 - FitLife</title>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; }}
+                .container {{ max-width: 800px; margin: 0 auto; }}
+                .success {{ background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="success">
+                    <h1>🤖 AI功能测试成功！</h1>
+                    <p><strong>✅ Gemini-2.5-Flash模型正常工作</strong></p>
+                </div>
+                
+                <h2>🍽 测试食物：{test_food}</h2>
+                
+                {nutrition_html}
+                
+                <div style="background: #e7f3ff; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <h3>🥘 识别的食物：</h3>
+                    {food_items_html}
+                </div>
+                
+                <div style="background: #f0f8f0; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <h3>🌟 营养亮点：</h3>
+                    {highlights_html}
+                </div>
+                
+                <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <h3>💭 健康建议：</h3>
+                    {suggestions_html}
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <h3>📝 分析说明：</h3>
+                    <p>{result.get('analysis_note', '无说明')}</p>
+                </div>
+                
+                <hr>
+                <h3>🔧 技术信息：</h3>
+                <ul>
+                    <li>✅ 使用Gemini-2.5-Flash模型</li>
+                    <li>✅ 中文食物识别优化</li>
+                    <li>✅ 精确营养成分计算</li>
+                    <li>✅ 中式份量估算</li>
+                </ul>
+                
+                <div style="margin: 20px 0;">
+                    <a href="/" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">返回首页</a>
+                    <a href="/clear-cache" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">清除AI缓存</a>
+                </div>
+                
+                <details style="margin: 20px 0;">
+                    <summary>查看原始JSON数据</summary>
+                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow: auto;">{json.dumps(result, ensure_ascii=False, indent=2)}</pre>
+                </details>
+            </div>
+        </body>
+        </html>
         """, 200
     except Exception as e:
         return f"""
-        <h1>❌ AI测试失败</h1>
-        <p>错误信息：{str(e)}</p>
-        <p>这可能是因为：</p>
-        <ul>
-            <li>GEMINI_API_KEY环境变量未设置</li>
-            <li>API密钥无效</li>
-            <li>网络连接问题</li>
-            <li>API使用限制</li>
-        </ul>
-        <p><a href="/">返回首页</a></p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>AI测试失败 - FitLife</title>
+            <meta charset="utf-8">
+        </head>
+        <body style="font-family: sans-serif; margin: 20px;">
+            <h1>❌ AI测试失败</h1>
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px;">
+                <p><strong>错误信息：</strong> {str(e)}</p>
+            </div>
+            <p>这可能是因为：</p>
+            <ul>
+                <li>GEMINI_API_KEY环境变量未设置</li>
+                <li>API密钥无效</li>
+                <li>网络连接问题</li>
+                <li>API使用限制</li>
+            </ul>
+            <a href="/" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">返回首页</a>
+        </body>
+        </html>
         """, 500
 
 @app.route('/clear-cache')
