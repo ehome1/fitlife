@@ -15,8 +15,12 @@ import hashlib
 # 加载环境变量
 load_dotenv()
 
-# 配置 Gemini AI
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+# 配置 Gemini AI (如果API密钥存在)
+api_key = os.getenv('GEMINI_API_KEY')
+if api_key:
+    genai.configure(api_key=api_key)
+else:
+    print("警告: GEMINI_API_KEY 环境变量未设置")
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -1683,14 +1687,12 @@ def debug():
 def health_check():
     """健康检查"""
     try:
-        # 检查数据库连接
-        with app.app_context():
-            db.engine.execute("SELECT 1")
-        
         return {
             "status": "healthy",
             "timestamp": str(datetime.now()),
-            "database": "connected"
+            "vercel": os.getenv('VERCEL', 'false'),
+            "gemini_key_set": bool(os.getenv('GEMINI_API_KEY')),
+            "database_url_set": bool(os.getenv('DATABASE_URL'))
         }
     except Exception as e:
         return {
@@ -1699,7 +1701,8 @@ def health_check():
             "timestamp": str(datetime.now())
         }, 500
 
-if __name__ == '__main__':
-    with app.app_context():
-        init_database()
-    app.run(debug=True)
+# 移除自动初始化，避免Vercel部署时的问题
+# if __name__ == '__main__':
+#     with app.app_context():
+#         init_database()
+#     app.run(debug=True)

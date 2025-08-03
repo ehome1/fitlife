@@ -1,10 +1,15 @@
 """
-Vercel部署入口文件
+Vercel部署入口文件 - 简化版本
 """
-from app import app
-
-# Vercel需要这个变量
-application = app
-
-if __name__ == "__main__":
-    app.run()
+try:
+    from app import app
+    # Vercel需要这个变量
+    application = app
+except Exception as e:
+    # 如果导入失败，创建一个最基本的Flask应用
+    from flask import Flask
+    application = Flask(__name__)
+    
+    @application.route('/')
+    def emergency():
+        return f"Emergency mode: {str(e)}"
