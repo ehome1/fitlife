@@ -1,9 +1,11 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 import psycopg2
+import requests
 load_dotenv()
 
 app = Flask(__name__)
