@@ -374,7 +374,7 @@ def call_gemini_api_with_retry(prompt, max_retries=3, base_delay=1):
     
     for attempt in range(max_retries):
         try:
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             response = model.generate_content(prompt)
             
             if not response or not response.text:
@@ -1482,7 +1482,7 @@ def test_ai():
         <hr>
         <h3>功能说明：</h3>
         <ul>
-            <li>✅ 使用Gemini-2.0-Flash-Exp模型</li>
+            <li>✅ 使用Gemini-2.5-Flash模型</li>
             <li>✅ 中文食物识别优化</li>
             <li>✅ 精确营养成分计算</li>
             <li>✅ 中式份量估算</li>
