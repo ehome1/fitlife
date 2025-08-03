@@ -363,10 +363,25 @@ def calculate_smart_intensity_and_calories(exercise_type, duration, weight):
 
 def call_gemini_api_with_retry(prompt, max_retries=3, base_delay=1):
     """调用Gemini API并处理重试逻辑"""
+    
+    # 检查API密钥
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        logger.error("GEMINI_API_KEY环境变量未设置")
+        raise Exception("AI服务配置错误：API密钥未设置")
+    
+    logger.info(f"使用Gemini API密钥: {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else '***'}")
+    
     for attempt in range(max_retries):
         try:
-            model = genai.GenerativeModel('gemini-2.5-flash')
+            model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(prompt)
+            
+            if not response or not response.text:
+                logger.warning(f"Gemini返回空响应 (尝试 {attempt + 1})")
+                raise Exception("API返回空响应")
+                
+            logger.info(f"Gemini API调用成功 (尝试 {attempt + 1})")
             return response.text.strip()
         
         except Exception as e:
@@ -405,43 +420,46 @@ def analyze_food_with_ai(food_description):
         return ai_analysis_cache[cache_key]
     
     try:
-        # 构建提示词
+        # 构建增强的提示词
         prompt = f"""
-作为一名专业的营养师和健康顾问，请深入分析以下食物描述，提供详细的营养信息和健康评估。请以JSON格式返回结果，不要包含其他文字。
+你是一位专业的中国营养师和健康顾问，精通中式菜肴和食材。请仔细分析以下食物描述，提供精确的营养信息和专业评估。
 
 食物描述：{cleaned_description}
 
-请按照以下JSON格式返回：
+分析任务：
+1. 识别所有具体食物和烹饪方式
+2. 估算准确的份量（参考中式餐具：一碗约250ml，一盘约300g等）
+3. 基于《中国食物成分表》提供营养数据
+4. 考虑烹饪方式对营养的影响（炒、煮、蒸、炸等）
+
+请严格按照以下JSON格式返回，不要包含任何其他文字：
+
 {{
-    "total_calories": 数字（总热量，单位kcal）,
-    "total_protein": 数字（总蛋白质，单位g，保留1位小数）,
-    "total_carbs": 数字（总碳水化合物，单位g，保留1位小数）,
-    "total_fat": 数字（总脂肪，单位g，保留1位小数）,
-    "food_items": ["食物1(份量)", "食物2(份量)", ...],
-    "health_score": 数字（健康评分，1-10分，10分最健康）,
+    "total_calories": 总热量数字（单位kcal，整数）,
+    "total_protein": 总蛋白质数字（单位g，保留1位小数）,
+    "total_carbs": 总碳水化合物数字（单位g，保留1位小数）,
+    "total_fat": 总脂肪数字（单位g，保留1位小数）,
+    "food_items": ["具体食物名称(估算份量)", "食物2(份量)", ...],
+    "health_score": 健康评分数字（1-10分，10分最健康）,
     "nutrition_balance": {{
         "protein_level": "充足|适中|不足",
         "carbs_level": "充足|适中|不足|过量", 
         "fat_level": "充足|适中|不足|过量",
-        "fiber_rich": true/false,
-        "vitamin_rich": true/false
+        "fiber_rich": true或false,
+        "vitamin_rich": true或false
     }},
-    "health_highlights": ["营养亮点1", "营养亮点2", ...],
-    "health_concerns": ["注意事项1", "注意事项2", ...],
-    "suggestions": ["建议1", "建议2", ...],
-    "meal_type_suitable": ["早餐", "午餐", "晚餐", "加餐"],
-    "analysis_note": "简要的整体分析说明"
+    "health_highlights": ["营养优势1", "营养优势2"],
+    "health_concerns": ["注意事项1", "注意事项2"],
+    "suggestions": ["改善建议1", "改善建议2"],
+    "meal_type_suitable": ["早餐", "午餐", "晚餐", "加餐"]中的一个或多个,
+    "analysis_note": "简要分析总结"
 }}
 
-分析要求：
-1. 根据常见食物的标准营养成分进行精确估算
-2. 考虑中文描述中的份量词汇（如"一碗"、"两个"、"一杯"等）
-3. 健康评分考虑：营养均衡性、加工程度、热量密度、维生素矿物质含量
-4. 营养均衡分析要客观准确，考虑不同人群的营养需求
-5. 健康亮点重点突出食物的营养优势
-6. 健康顾虑指出可能的营养风险或改进空间
-7. 建议要实用具体，帮助用户优化饮食
-8. 适合餐次根据食物特点和营养构成判断
+重要提示：
+- 如果描述模糊，基于最可能的中式菜肴进行合理推测
+- 常见份量参考：一碗米饭150g，一盘青菜200g，一块肉50-100g
+- 考虑油盐糖等调料的热量贡献
+- 优先识别主食、蛋白质、蔬菜的具体种类和用量
 """
         
         # 使用重试逻辑调用API
@@ -1444,6 +1462,63 @@ def reset_db_route():
         <p>错误信息：{str(e)}</p>
         <p><a href="/init-database">尝试初始化</a></p>
         """, 500
+
+@app.route('/test-ai')
+def test_ai():
+    """测试AI分析功能"""
+    try:
+        # 清理缓存以测试最新逻辑
+        ai_analysis_cache.clear()
+        
+        # 测试食物分析
+        test_food = "一碗白米饭，一盘西红柿炒鸡蛋，一小碗紫菜蛋花汤"
+        result = analyze_food_with_ai(test_food)
+        
+        return f"""
+        <h1>🤖 AI功能测试</h1>
+        <h2>测试食物：{test_food}</h2>
+        <h3>分析结果：</h3>
+        <pre>{json.dumps(result, ensure_ascii=False, indent=2)}</pre>
+        <hr>
+        <h3>功能说明：</h3>
+        <ul>
+            <li>✅ 使用Gemini-1.5-Flash模型</li>
+            <li>✅ 中文食物识别优化</li>
+            <li>✅ 精确营养成分计算</li>
+            <li>✅ 中式份量估算</li>
+        </ul>
+        <p><a href="/">返回首页</a></p>
+        <p><a href="/clear-cache">清除AI缓存</a></p>
+        """, 200
+    except Exception as e:
+        return f"""
+        <h1>❌ AI测试失败</h1>
+        <p>错误信息：{str(e)}</p>
+        <p>这可能是因为：</p>
+        <ul>
+            <li>GEMINI_API_KEY环境变量未设置</li>
+            <li>API密钥无效</li>
+            <li>网络连接问题</li>
+            <li>API使用限制</li>
+        </ul>
+        <p><a href="/">返回首页</a></p>
+        """, 500
+
+@app.route('/clear-cache')
+def clear_cache():
+    """清除AI分析缓存"""
+    try:
+        cache_size = len(ai_analysis_cache)
+        ai_analysis_cache.clear()
+        return f"""
+        <h1>🧹 缓存清理完成</h1>
+        <p>已清除 {cache_size} 个缓存项</p>
+        <p>下次AI分析将使用最新的算法和模型</p>
+        <p><a href="/">返回首页</a></p>
+        <p><a href="/test-ai">测试AI功能</a></p>
+        """, 200
+    except Exception as e:
+        return f"缓存清理失败: {str(e)}", 500
 
 if __name__ == '__main__':
     with app.app_context():
