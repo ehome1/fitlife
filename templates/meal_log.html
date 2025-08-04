@@ -454,13 +454,18 @@
 
 .nutrition-card {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 15px;
+    padding: 24px 16px;
     text-align: center;
     border: 2px solid #e9ecef;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .nutrition-card:hover {
@@ -485,28 +490,30 @@
 .fat-card::before { background: #28a745; }
 
 .nutrition-icon {
-    font-size: 2rem;
-    margin-bottom: 10px;
-    opacity: 0.8;
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+    opacity: 0.9;
 }
 
 .nutrition-value {
-    font-size: 1.8rem;
-    font-weight: 700;
+    font-size: 2.2rem;
+    font-weight: 800;
     color: #2c3e50;
-    margin: 8px 0;
+    margin: 4px 0;
+    line-height: 1;
 }
 
 .nutrition-unit {
-    font-size: 0.9rem;
+    font-size: 1rem;
     color: #6c757d;
+    margin: 2px 0;
     font-weight: 500;
 }
 
 .nutrition-label {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: #495057;
-    margin-top: 5px;
+    margin-top: 4px;
     font-weight: 600;
 }
 
@@ -785,12 +792,11 @@ function testAIAnalysis() {
     })
     .then(data => {
         console.log('API响应数据:', data);
-        if (foodContainer) {
-            foodContainer.innerHTML = `
-            <div class="alert alert-success">
-                <h6>✅ 成功!</h6>
-                <pre>${JSON.stringify(data, null, 2)}</pre>
-            </div>`;
+        if (data.success) {
+            // 使用正常的UI显示，不显示JSON
+            displaySimpleAIResults(data.data);
+        } else {
+            throw new Error(data.error || 'AI分析失败');
         }
     })
     .catch(error => {
@@ -1009,19 +1015,35 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // 显示健康评分
-            const scoreEl = document.getElementById('stream_score');
+            const scoreEl = document.getElementById('health_score');
             if (scoreEl) scoreEl.textContent = analysisData.health_score || '7.0';
+            
+            // 显示餐次适合度
+            const suitableEl = document.getElementById('meal_suitable');
+            if (suitableEl) {
+                const suitability = analysisData.meal_suitability || '适合用餐';
+                suitableEl.innerHTML = `💚 ${suitability}`;
+            }
             
             // 显示营养亮点
             if (highlightsContainer) {
-                const highlights = analysisData.nutrition_highlights || analysisData.health_highlights || ['提供基础营养'];
-                highlightsContainer.innerHTML = highlights.map(h => `<li>${h}</li>`).join('');
+                const highlights = analysisData.nutrition_highlights || analysisData.health_highlights || [
+                    '🍚 主食：提供充足的碳水化合物，是身体能量的主要来源',
+                    '💪 蛋白质：支持肌肉生长和修复，维持身体正常功能',
+                    '🧠 营养密度：合理的营养搭配，有助于维持健康体重'
+                ];
+                highlightsContainer.innerHTML = highlights.map(h => `<li class="mb-2">${h}</li>`).join('');
             }
             
             // 显示建议
             if (suggestionsContainer) {
-                const suggestions = analysisData.dietary_suggestions || analysisData.suggestions || ['保持均衡饮食'];
-                suggestionsContainer.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
+                const suggestions = analysisData.dietary_suggestions || analysisData.suggestions || [
+                    '🥬 建议搭配新鲜蔬菜，增加维生素和膳食纤维的摄入',
+                    '🚰 记得多喝水，保持身体水分平衡',
+                    '⏰ 定时用餐，养成良好的饮食习惯',
+                    '🏃‍♂️ 适当运动，配合健康饮食达到更好效果'
+                ];
+                suggestionsContainer.innerHTML = suggestions.map(s => `<li class="mb-2">${s}</li>`).join('');
             }
             
             // 显示个性化评估
