@@ -422,7 +422,31 @@ def call_gemini_api_with_retry(prompt, max_retries=3, base_delay=1):
     
     raise Exception("API调用失败，已达到最大重试次数")
 
-def analyze_food_with_ai(food_description):
+def get_recent_exercises(user_id, days=7):
+    """获取用户最近几天的运动记录"""
+    try:
+        end_date = datetime.now(timezone.utc)
+        start_date = end_date - timedelta(days=days)
+        exercises = ExerciseLog.query.filter(
+            ExerciseLog.user_id == user_id,
+            ExerciseLog.exercise_date >= start_date
+        ).order_by(ExerciseLog.exercise_date.desc()).all()
+        
+        if not exercises:
+            return "最近无运动记录"
+        
+        # 汇总运动信息
+        exercise_summary = []
+        for exercise in exercises[:5]:  # 最多显示5条
+            date_str = exercise.exercise_date.strftime('%m-%d')
+            exercise_summary.append(f"{date_str} {exercise.exercise_name}({exercise.duration}分钟)")
+        
+        return "、".join(exercise_summary)
+    except Exception as e:
+        logger.error(f"获取运动记录失败: {str(e)}")
+        return "运动记录获取失败"
+
+def analyze_food_with_ai(food_description, user_profile=None, meal_type="未指定", recent_exercises=None):
     """使用Gemini AI分析食物描述，返回营养信息"""
     # 输入验证和清理
     if not food_description or not food_description.strip():
@@ -440,46 +464,60 @@ def analyze_food_with_ai(food_description):
         return ai_analysis_cache[cache_key]
     
     try:
-        # 构建增强的提示词
+        # 构建个性化的提示词
+        user_info = ""
+        if user_profile:
+            gender_text = "男性" if user_profile.gender == 'male' else "女性"
+            user_info = f"""
+用户信息：
+- 基本信息：{user_profile.age}岁 {gender_text} {user_profile.height}cm {user_profile.weight}kg
+- 活动水平：{user_profile.activity_level}
+- 基础代谢：{user_profile.bmr:.0f} kcal/天
+- 餐次：{meal_type}
+- 最近运动：{recent_exercises or "无运动记录"}
+"""
+        
         prompt = f"""
-你是一位专业的中国营养师和健康顾问，精通中式菜肴和食材。请仔细分析以下食物描述，提供精确的营养信息和专业评估。
+你是一位专业的中国营养师和健康顾问，精通中式菜肴和食材。请结合用户个人信息，分析以下食物描述，提供个性化的营养评估。
 
+{user_info}
 食物描述：{cleaned_description}
 
 分析任务：
-1. 识别所有具体食物和烹饪方式
-2. 估算准确的份量（参考中式餐具：一碗约250ml，一盘约300g等）
-3. 基于《中国食物成分表》提供营养数据
-4. 考虑烹饪方式对营养的影响（炒、煮、蒸、炸等）
+1. 识别具体食物并添加合适emoji，估算份量
+2. 基于《中国食物成分表》计算精确营养数据
+3. 结合用户信息和餐次，给出个性化健康评分
+4. 考虑用户运动情况，提供针对性建议
 
 请严格按照以下JSON格式返回，不要包含任何其他文字：
 
 {{
-    "total_calories": 总热量数字（单位kcal，整数）,
-    "total_protein": 总蛋白质数字（单位g，保留1位小数）,
-    "total_carbs": 总碳水化合物数字（单位g，保留1位小数）,
-    "total_fat": 总脂肪数字（单位g，保留1位小数）,
-    "food_items": ["具体食物名称(估算份量)", "食物2(份量)", ...],
-    "health_score": 健康评分数字（1-10分，10分最健康）,
-    "nutrition_balance": {{
-        "protein_level": "充足|适中|不足",
-        "carbs_level": "充足|适中|不足|过量", 
-        "fat_level": "充足|适中|不足|过量",
-        "fiber_rich": true或false,
-        "vitamin_rich": true或false
-    }},
-    "health_highlights": ["营养优势1", "营养优势2"],
-    "health_concerns": ["注意事项1", "注意事项2"],
-    "suggestions": ["改善建议1", "改善建议2"],
-    "meal_type_suitable": ["早餐", "午餐", "晚餐", "加餐"]中的一个或多个,
-    "analysis_note": "简要分析总结"
+    "food_items_with_emoji": ["🍚 白米饭(150g)", "🥚 煎蛋(2个)", "🥛 牛奶(250ml)"],
+    "total_calories": 总热量数字（整数），
+    "total_protein": 总蛋白质数字（保留1位小数），
+    "total_carbs": 总碳水化合物数字（保留1位小数），
+    "total_fat": 总脂肪数字（保留1位小数），
+    "health_score": 健康评分数字（1-10，考虑用户情况），
+    "meal_suitability": "很适合早餐|适合午餐|适合晚餐",
+    "nutrition_highlights": [
+        "🥚 鸡蛋: 提供优质完全蛋白质",
+        "🥛 牛奶: 丰富钙质和维生素D",
+        "🍚 米饭: 稳定的能量来源"
+    ],
+    "dietary_suggestions": [
+        "搭配蔬菜增加膳食纤维",
+        "保持这个搭配很棒！",
+        "下次可以试试全麦食品"
+    ],
+    "personalized_assessment": "根据你的运动计划和身体状况，这餐营养搭配的个性化评估"
 }}
 
-重要提示：
-- 如果描述模糊，基于最可能的中式菜肴进行合理推测
-- 常见份量参考：一碗米饭150g，一盘青菜200g，一块肉50-100g
-- 考虑油盐糖等调料的热量贡献
-- 优先识别主食、蛋白质、蔬菜的具体种类和用量
+重要要求：
+- food_items_with_emoji必须包含合适的emoji和具体重量
+- nutrition_highlights先说食材，再说营养价值
+- dietary_suggestions要以鼓励为主，避免过多批评
+- personalized_assessment要结合用户运动和体重等信息
+- 如果用户有运动记录，要在评估中体现运动与饮食的配合
 """
         
         # 使用重试逻辑调用API
@@ -819,12 +857,24 @@ def api_analyze_food():
         data = request.get_json()
         # 支持两种字段格式：description 和 food_description
         food_description = data.get('description', data.get('food_description', '')).strip()
+        meal_type = data.get('meal_type', '未指定')
         
         if not food_description:
             return jsonify({'error': '食物描述不能为空'}), 400
         
-        # 调用AI分析函数
-        analysis_result = analyze_food_with_ai(food_description)
+        # 获取用户完整信息
+        user_profile = current_user.profile
+        recent_exercises = None
+        if user_profile:
+            recent_exercises = get_recent_exercises(current_user.id)
+        
+        # 调用升级后的AI分析函数
+        analysis_result = analyze_food_with_ai(
+            food_description, 
+            user_profile, 
+            meal_type, 
+            recent_exercises
+        )
         
         return jsonify({
             'success': True,

@@ -150,73 +150,89 @@
                         </button>
                     </div>
                     
-                    <!-- 流式AI分析结果显示区域 -->
+                    <!-- 升级版AI分析结果显示区域 -->
                     <div class="mt-4" id="streamingAnalysis" style="display: none;">
-                        <div class="card border-info">
-                            <div class="card-header bg-info text-white">
+                        <div class="card border-info shadow-lg">
+                            <div class="card-header bg-gradient-primary text-white">
                                 <h6 class="mb-0">
-                                    <i class="fas fa-robot me-2"></i>AI营养分析 <span class="spinner-border spinner-border-sm" id="analysisSpinner"></span>
+                                    <i class="fas fa-robot me-2"></i>🤖 AI智能营养分析 
+                                    <span class="spinner-border spinner-border-sm" id="analysisSpinner"></span>
                                 </h6>
                             </div>
-                            <div class="card-body">
-                                <!-- 基础营养信息 -->
-                                <div class="row g-3 mb-3" id="nutritionQuickView">
-                                    <div class="col-3 text-center">
-                                        <div class="nutrition-mini-card">
-                                            <div class="nutrition-value text-danger h5" id="stream_calories">-</div>
-                                            <small class="text-muted">热量(kcal)</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-3 text-center">
-                                        <div class="nutrition-mini-card">
-                                            <div class="nutrition-value text-primary h5" id="stream_protein">-</div>
-                                            <small class="text-muted">蛋白质(g)</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-3 text-center">
-                                        <div class="nutrition-mini-card">
-                                            <div class="nutrition-value text-warning h5" id="stream_carbs">-</div>
-                                            <small class="text-muted">碳水(g)</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-3 text-center">
-                                        <div class="nutrition-mini-card">
-                                            <div class="nutrition-value text-success h5" id="stream_fat">-</div>
-                                            <small class="text-muted">脂肪(g)</small>
-                                        </div>
+                            <div class="card-body p-4">
+                                
+                                <!-- 食物识别区 -->
+                                <div class="food-recognition mb-4">
+                                    <h6 class="text-muted mb-2">📋 识别食物:</h6>
+                                    <div id="stream_foods_emoji" class="food-items-display">
+                                        <span class="badge bg-light text-dark">正在识别...</span>
                                     </div>
                                 </div>
                                 
-                                <!-- 识别的食物 -->
-                                <div class="mb-3">
-                                    <h6 class="text-muted mb-2">🍽️ 识别的食物</h6>
-                                    <div class="bg-light p-2 rounded" id="stream_foods">正在识别...</div>
-                                </div>
-                                
-                                <!-- 健康评分 -->
-                                <div class="mb-3 text-center">
-                                    <h6 class="text-info mb-2">🏆 健康评分</h6>
-                                    <div id="stream_score">
-                                        <span class="badge bg-secondary">分析中...</span>
+                                <!-- 4格营养卡片网格 -->
+                                <div class="nutrition-grid mb-4">
+                                    <div class="nutrition-card calories-card">
+                                        <div class="nutrition-icon">🔥</div>
+                                        <div class="nutrition-value" id="stream_calories">-</div>
+                                        <div class="nutrition-unit">kcal</div>
+                                        <div class="nutrition-label">热量</div>
+                                    </div>
+                                    <div class="nutrition-card protein-card">
+                                        <div class="nutrition-icon">🥩</div>
+                                        <div class="nutrition-value" id="stream_protein">-</div>
+                                        <div class="nutrition-unit">g</div>
+                                        <div class="nutrition-label">蛋白质</div>
+                                    </div>
+                                    <div class="nutrition-card carbs-card">
+                                        <div class="nutrition-icon">🌾</div>
+                                        <div class="nutrition-value" id="stream_carbs">-</div>
+                                        <div class="nutrition-unit">g</div>
+                                        <div class="nutrition-label">碳水</div>
+                                    </div>
+                                    <div class="nutrition-card fat-card">
+                                        <div class="nutrition-icon">🧈</div>
+                                        <div class="nutrition-value" id="stream_fat">-</div>
+                                        <div class="nutrition-unit">g</div>
+                                        <div class="nutrition-label">脂肪</div>
                                     </div>
                                 </div>
                                 
-                                <!-- 健康分析流式输出 -->
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6 class="text-success mb-2">✅ 营养亮点</h6>
-                                        <div id="stream_highlights" class="small">正在分析营养亮点...</div>
+                                <!-- 评分和适合度 -->
+                                <div class="score-section mb-4 text-center">
+                                    <span class="health-score me-3">
+                                        <span id="health_score_display">⭐ <span id="health_score">-</span>/10</span>
+                                    </span>
+                                    <span class="meal-suitable">
+                                        <span id="meal_suitable">💚 分析中...</span>
+                                    </span>
+                                </div>
+                                
+                                <!-- 双栏布局：亮点 + 建议 -->
+                                <div class="analysis-columns mb-4">
+                                    <div class="highlights-column">
+                                        <h6 class="section-title">✨ 营养亮点</h6>
+                                        <div id="stream_highlights" class="analysis-content">正在分析营养亮点...</div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <h6 class="text-warning mb-2">⚠️ 注意事项</h6>
-                                        <div id="stream_concerns" class="small">正在分析注意事项...</div>
+                                    <div class="suggestions-column">
+                                        <h6 class="section-title">💡 饮食建议</h6>
+                                        <div id="stream_suggestions" class="analysis-content">正在生成饮食建议...</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 个性化评估 -->
+                                <div class="personalized-section mb-4" id="personalized_section" style="display: none;">
+                                    <h6 class="text-white mb-2">
+                                        <i class="fas fa-user-cog me-2"></i>👤 个性化评估 (基于你的运动计划)
+                                    </h6>
+                                    <div id="personalized_assessment" class="personalized-content">
+                                        正在生成个性化评估...
                                     </div>
                                 </div>
                                 
                                 <!-- 分析完成提示 -->
-                                <div class="mt-3 text-center" id="analysisComplete" style="display: none;">
-                                    <button class="btn btn-success" id="confirmStreamAnalysis">
-                                        <i class="fas fa-check me-2"></i>确认并记录
+                                <div class="text-center" id="analysisComplete" style="display: none;">
+                                    <button class="btn btn-success btn-lg" id="confirmStreamAnalysis">
+                                        <i class="fas fa-check me-2"></i>✅ 确认并记录
                                     </button>
                                 </div>
                             </div>
@@ -426,6 +442,222 @@
     position: relative;
 }
 
+/* 升级版AI分析界面样式 */
+
+/* 4格营养卡片网格 */
+.nutrition-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.nutrition-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.nutrition-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: #007bff;
+}
+
+.nutrition-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #28a745, #ffc107, #dc3545);
+}
+
+.calories-card::before { background: #dc3545; }
+.protein-card::before { background: #007bff; }
+.carbs-card::before { background: #ffc107; }
+.fat-card::before { background: #28a745; }
+
+.nutrition-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+.nutrition-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 8px 0;
+}
+
+.nutrition-unit {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.nutrition-label {
+    font-size: 0.8rem;
+    color: #495057;
+    margin-top: 5px;
+    font-weight: 600;
+}
+
+/* 食物识别显示 */
+.food-recognition {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 15px;
+}
+
+.food-items-display .badge {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    margin: 3px;
+    border-radius: 20px;
+}
+
+/* 评分和适合度 */
+.score-section {
+    padding: 15px;
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    border-radius: 12px;
+}
+
+.health-score {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #ff9800;
+}
+
+.meal-suitable {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #4caf50;
+}
+
+/* 双栏分析布局 */
+.analysis-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.highlights-column, .suggestions-column {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 15px;
+    border-left: 4px solid #007bff;
+}
+
+.suggestions-column {
+    border-left-color: #28a745;
+}
+
+.section-title {
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #495057;
+}
+
+.analysis-content {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.analysis-content .highlight-item,
+.analysis-content .suggestion-item {
+    margin-bottom: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.analysis-content .highlight-item:last-child,
+.analysis-content .suggestion-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* 个性化评估区域 */
+.personalized-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.personalized-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    opacity: 0.95;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .nutrition-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .analysis-columns {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .nutrition-card {
+        padding: 15px;
+    }
+    
+    .nutrition-value {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .nutrition-grid {
+        gap: 8px;
+    }
+    
+    .nutrition-card {
+        padding: 12px;
+    }
+    
+    .nutrition-icon {
+        font-size: 1.5rem;
+    }
+    
+    .nutrition-value {
+        font-size: 1.3rem;
+    }
+}
+
+/* 动画效果 */
+.fade-in {
+    animation: fadeIn 0.6s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.nutrition-card {
+    animation: slideInUp 0.5s ease-out;
+}
+
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .suggestion-item {
     padding: 0.5rem;
     background: rgba(255, 255, 255, 0.7);
@@ -566,14 +798,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('stream_highlights').innerHTML = '<span class="typing-effect">🔍 正在分析营养亮点...</span>';
         document.getElementById('stream_concerns').innerHTML = '<span class="typing-effect">⚠️ 正在分析注意事项...</span>';
         
-        // 调用真正的AI API
+        // 调用升级后的AI API，包含餐次信息
+        const mealType = document.getElementById('meal_type').value;
         fetch('/api/analyze-food', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                description: description
+                description: description,
+                meal_type: mealType
             })
         })
         .then(response => response.json())
@@ -599,66 +833,141 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 显示真实的AI分析结果
+    // 升级版AI分析结果显示
     function displayRealAIResults(analysisData) {
-        // 更新营养数据
+        console.log('AI分析数据:', analysisData); // 调试用
+        
+        // 1. 显示带emoji的食物识别 (500ms)
         setTimeout(() => {
-            document.getElementById('stream_calories').textContent = analysisData.total_calories || 0;
-            document.getElementById('stream_protein').textContent = analysisData.total_protein || 0;
-            document.getElementById('stream_carbs').textContent = analysisData.total_carbs || 0;
-            document.getElementById('stream_fat').textContent = analysisData.total_fat || 0;
-            
-            // 更新隐藏表单字段
-            document.getElementById('hidden_calories').value = analysisData.total_calories || 0;
-            document.getElementById('hidden_protein').value = analysisData.total_protein || 0;
-            document.getElementById('hidden_carbs').value = analysisData.total_carbs || 0;
-            document.getElementById('hidden_fat').value = analysisData.total_fat || 0;
-            document.getElementById('hidden_food_items').value = JSON.stringify(analysisData.food_items || []);
+            displayFoodWithEmoji(analysisData.food_items_with_emoji || analysisData.food_items || ['未识别食物']);
         }, 500);
         
-        // 显示识别的食物
+        // 2. 营养数据卡片动画 (1000ms)
         setTimeout(() => {
-            const foodItems = analysisData.food_items || ['未识别食物'];
-            document.getElementById('stream_foods').innerHTML = 
-                '<div class="fade-in">' + 
-                foodItems.map(item => `<span class="badge bg-primary me-1 mb-1">${item}</span>`).join('') + 
-                '</div>';
-        }, 1200);
+            animateNutritionCards(analysisData);
+        }, 1000);
         
-        // 显示营养亮点
+        // 3. 评分和适合度 (1500ms)
         setTimeout(() => {
-            const highlights = analysisData.health_highlights || ['提供基础营养'];
-            document.getElementById('stream_highlights').innerHTML = 
-                '<div class="fade-in">' + 
-                highlights.map(item => `<small class="text-success d-block">✅ ${item}</small>`).join('') + 
-                '</div>';
+            displayScoreAndSuitability(analysisData);
+        }, 1500);
+        
+        // 4. 营养亮点（左栏） (2000ms)
+        setTimeout(() => {
+            displayNutritionHighlights(analysisData.nutrition_highlights || analysisData.health_highlights || ['提供基础营养']);
         }, 2000);
         
-        // 显示健康建议
+        // 5. 饮食建议（右栏） (2500ms)
         setTimeout(() => {
-            const suggestions = analysisData.suggestions || ['注意营养均衡'];
-            document.getElementById('stream_concerns').innerHTML = 
-                '<div class="fade-in">' + 
-                suggestions.map(item => `<small class="text-warning d-block">💡 ${item}</small>`).join('') + 
-                '</div>';
-        }, 2800);
+            displayDietarySuggestions(analysisData.dietary_suggestions || analysisData.suggestions || ['注意营养均衡']);
+        }, 2500);
         
-        // 显示健康评分和完成分析
+        // 6. 个性化评估 (3000ms)
         setTimeout(() => {
-            const healthScore = analysisData.health_score || 5;
-            let scoreColor = 'success';
-            if (healthScore < 4) scoreColor = 'danger';
-            else if (healthScore < 7) scoreColor = 'warning';
-            
-            document.getElementById('stream_score').innerHTML = 
-                `<span class="badge bg-${scoreColor} fs-6">${healthScore}/10</span>`;
-            
-            // 分析完成
-            document.getElementById('analysisSpinner').style.display = 'none';
-            document.getElementById('analysisComplete').style.display = 'block';
-            analyzeButton.disabled = false;
-            analyzeButton.innerHTML = '<i class="fas fa-edit me-2"></i>重新分析';
+            displayPersonalizedAssessment(analysisData.personalized_assessment || '分析完成');
+        }, 3000);
+        
+        // 7. 完成分析 (3500ms)
+        setTimeout(() => {
+            completeAnalysis();
         }, 3500);
+    }
+    
+    // 显示带emoji的食物识别
+    function displayFoodWithEmoji(foodItems) {
+        const container = document.getElementById('stream_foods_emoji') || document.getElementById('stream_foods');
+        if (container) {
+            container.innerHTML = '<div class="fade-in">' + 
+                foodItems.map(item => `<span class="badge bg-primary me-2 mb-2">${item}</span>`).join('') + 
+                '</div>';
+        }
+    }
+    
+    // 营养卡片动画
+    function animateNutritionCards(analysisData) {
+        const updates = [
+            { id: 'stream_calories', value: analysisData.total_calories || 0, hidden: 'hidden_calories' },
+            { id: 'stream_protein', value: analysisData.total_protein || 0, hidden: 'hidden_protein' },
+            { id: 'stream_carbs', value: analysisData.total_carbs || 0, hidden: 'hidden_carbs' },
+            { id: 'stream_fat', value: analysisData.total_fat || 0, hidden: 'hidden_fat' }
+        ];
+        
+        updates.forEach((update, index) => {
+            setTimeout(() => {
+                const element = document.getElementById(update.id);
+                const hiddenElement = document.getElementById(update.hidden);
+                if (element) {
+                    element.textContent = update.value;
+                    element.parentElement.classList.add('fade-in');
+                }
+                if (hiddenElement) {
+                    hiddenElement.value = update.value;
+                }
+            }, index * 200);
+        });
+        
+        // 更新food_items隐藏字段
+        const hiddenFoodItems = document.getElementById('hidden_food_items');
+        if (hiddenFoodItems) {
+            hiddenFoodItems.value = JSON.stringify(analysisData.food_items_with_emoji || analysisData.food_items || []);
+        }
+    }
+    
+    // 显示评分和适合度
+    function displayScoreAndSuitability(analysisData) {
+        const healthScore = analysisData.health_score || 5;
+        const mealSuitability = analysisData.meal_suitability || '适合用餐';
+        
+        const scoreElement = document.getElementById('health_score');
+        const suitableElement = document.getElementById('meal_suitable');
+        
+        if (scoreElement) {
+            scoreElement.textContent = healthScore;
+            scoreElement.parentElement.classList.add('fade-in');
+        }
+        if (suitableElement) {
+            suitableElement.textContent = `💚 ${mealSuitability}`;
+            suitableElement.classList.add('fade-in');
+        }
+    }
+    
+    // 显示营养亮点
+    function displayNutritionHighlights(highlights) {
+        const container = document.getElementById('stream_highlights');
+        if (container) {
+            container.innerHTML = '<div class="fade-in">' + 
+                highlights.map(item => `<div class="highlight-item">✨ ${item}</div>`).join('') + 
+                '</div>';
+        }
+    }
+    
+    // 显示饮食建议
+    function displayDietarySuggestions(suggestions) {
+        const container = document.getElementById('stream_suggestions');
+        if (container) {
+            container.innerHTML = '<div class="fade-in">' + 
+                suggestions.map(item => `<div class="suggestion-item">💡 ${item}</div>`).join('') + 
+                '</div>';
+        }
+    }
+    
+    // 显示个性化评估
+    function displayPersonalizedAssessment(assessment) {
+        const container = document.getElementById('personalized_assessment');
+        const section = document.getElementById('personalized_section');
+        if (container && section && assessment && assessment !== '分析完成') {
+            container.innerHTML = `<div class="fade-in">${assessment}</div>`;
+            section.style.display = 'block';
+            section.classList.add('fade-in');
+        }
+    }
+    
+    // 完成分析
+    function completeAnalysis() {
+        document.getElementById('analysisSpinner').style.display = 'none';
+        document.getElementById('analysisComplete').style.display = 'block';
+        analyzeButton.disabled = false;
+        analyzeButton.innerHTML = '<i class="fas fa-edit me-2"></i>重新分析';
     }
     
     // 模拟流式营养数据显示
