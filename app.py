@@ -446,6 +446,102 @@ def get_recent_exercises(user_id, days=7):
         logger.error(f"获取运动记录失败: {str(e)}")
         return "运动记录获取失败"
 
+def analyze_food_simple(food_description, meal_type="未指定"):
+    """简化版AI食物分析 - 用于排查超时问题"""
+    logger.info(f"简化分析开始: {food_description}")
+    
+    # 生成简单缓存键
+    cache_key = hashlib.md5(f"simple_{food_description.lower()}".encode()).hexdigest()
+    
+    # 检查缓存
+    if cache_key in ai_analysis_cache:
+        logger.info("使用缓存的简化分析结果")
+        return ai_analysis_cache[cache_key]
+    
+    try:
+        # 最简单的prompt
+        prompt = f"""
+你是营养师，请分析食物：{food_description}
+
+严格按JSON格式返回：
+{{
+    "food_items_with_emoji": ["🍚 白米饭(150g)"],
+    "total_calories": 300,
+    "total_protein": 8.0,
+    "total_carbs": 60.0,
+    "total_fat": 2.0,
+    "health_score": 7.5,
+    "meal_suitability": "适合{meal_type}",
+    "nutrition_highlights": ["🍚 米饭: 提供能量"],
+    "dietary_suggestions": ["搭配蔬菜更营养"],
+    "personalized_assessment": "营养搭配合理"
+}}
+"""
+        
+        logger.info("调用Gemini API...")
+        response_text = call_gemini_api_with_retry(prompt)
+        logger.info("Gemini API响应成功")
+        
+        # 解析JSON
+        if '```json' in response_text:
+            json_start = response_text.find('```json') + 7
+            json_end = response_text.find('```', json_start)
+            json_text = response_text[json_start:json_end].strip()
+        elif '{' in response_text and '}' in response_text:
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            json_text = response_text[json_start:json_end]
+        else:
+            json_text = response_text
+        
+        analysis_result = json.loads(json_text)
+        logger.info("JSON解析成功")
+        
+        # 格式化结果
+        result = {
+            'food_items_with_emoji': analysis_result.get('food_items_with_emoji', ['🍽️ 混合食物']),
+            'total_calories': int(analysis_result.get('total_calories', 300)),
+            'total_protein': float(analysis_result.get('total_protein', 8.0)),
+            'total_carbs': float(analysis_result.get('total_carbs', 60.0)),
+            'total_fat': float(analysis_result.get('total_fat', 2.0)),
+            'health_score': float(analysis_result.get('health_score', 7.0)),
+            'meal_suitability': analysis_result.get('meal_suitability', '适合用餐'),
+            'nutrition_highlights': analysis_result.get('nutrition_highlights', ['提供基础营养']),
+            'dietary_suggestions': analysis_result.get('dietary_suggestions', ['注意营养均衡']),
+            'personalized_assessment': analysis_result.get('personalized_assessment', ''),
+            
+            # 兼容字段
+            'food_items': analysis_result.get('food_items_with_emoji', ['混合食物']),
+            'health_highlights': analysis_result.get('nutrition_highlights', ['提供基础营养']),
+            'suggestions': analysis_result.get('dietary_suggestions', ['注意营养均衡'])
+        }
+        
+        # 缓存结果
+        if len(ai_analysis_cache) < 100:
+            ai_analysis_cache[cache_key] = result
+        
+        logger.info("简化分析完成")
+        return result
+        
+    except Exception as e:
+        logger.error(f"简化AI分析失败: {str(e)}")
+        # 返回兜底数据
+        return {
+            'food_items_with_emoji': [f'🍽️ {food_description}'],
+            'total_calories': 300,
+            'total_protein': 8.0,
+            'total_carbs': 60.0,
+            'total_fat': 2.0,
+            'health_score': 6.0,
+            'meal_suitability': f'适合{meal_type}',
+            'nutrition_highlights': ['提供基础营养'],
+            'dietary_suggestions': ['搭配蔬菜水果'],
+            'personalized_assessment': '基础营养评估',
+            'food_items': [food_description],
+            'health_highlights': ['提供基础营养'], 
+            'suggestions': ['搭配蔬菜水果']
+        }
+
 def analyze_food_with_ai(food_description, user_profile=None, meal_type="未指定", recent_exercises=None):
     """使用Gemini AI分析食物描述，返回营养信息"""
     # 输入验证和清理
@@ -900,24 +996,10 @@ def api_analyze_food():
         if not food_description:
             return jsonify({'error': '食物描述不能为空'}), 400
         
-        # 获取用户完整信息
-        user_profile = current_user.profile
-        logger.info(f"用户档案: {user_profile is not None}")
-        
-        recent_exercises = None
-        if user_profile:
-            recent_exercises = get_recent_exercises(current_user.id)
-            logger.info(f"最近运动: {recent_exercises}")
-        
-        # 调用升级后的AI分析函数
-        logger.info("调用AI分析函数...")
-        analysis_result = analyze_food_with_ai(
-            food_description, 
-            user_profile, 
-            meal_type, 
-            recent_exercises
-        )
-        logger.info(f"AI分析完成，结果: {type(analysis_result)}")
+        # 临时使用简化版本来排查问题
+        logger.info("使用简化版AI分析...")
+        analysis_result = analyze_food_simple(food_description, meal_type)
+        logger.info(f"简化AI分析完成")
         
         return jsonify({
             'success': True,
