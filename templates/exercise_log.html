@@ -53,15 +53,6 @@
                         <div class="form-text">系统将根据运动类型和时长自动判断运动强度</div>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="calories_preview" class="form-label">预计消耗</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="calories_preview" readonly 
-                                   placeholder="填写信息后显示预计消耗">
-                            <span class="input-group-text">kcal</span>
-                        </div>
-                        <div class="form-text">根据你的体重和运动强度自动计算</div>
-                    </div>
                     
                     <div class="mb-3">
                         <button type="button" class="btn btn-outline-primary" id="analyzeExercise">
@@ -320,7 +311,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const exerciseType = document.getElementById('exercise_type');
     const duration = document.getElementById('duration');
-    const caloriesPreview = document.getElementById('calories_preview');
     const exerciseDate = document.getElementById('exercise_date');
     
     // 设置默认日期为今天
@@ -365,8 +355,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 displayExerciseAnalysisResults(data.data);
-                // 更新热量预览
-                caloriesPreview.value = data.data.calories_burned;
             } else {
                 alert('AI分析失败：' + (data.error || '未知错误'));
             }
@@ -385,58 +373,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // 体重数据（从用户资料获取，这里使用默认值）
-    const userWeight = {{ current_user.profile.weight if current_user.profile else 70 }};
-    
-    // 智能MET值表 - 根据运动类型和时长自动判断强度
-    function getSmartMET(exerciseType, duration) {
-        const metConfig = {
-            'cardio': { base: 7.0, lowThreshold: 20, highThreshold: 45 },
-            'strength': { base: 6.0, lowThreshold: 15, highThreshold: 60 },
-            'yoga': { base: 3.0, lowThreshold: 30, highThreshold: 90 },
-            'sports': { base: 8.0, lowThreshold: 30, highThreshold: 60 },
-            'walking': { base: 4.5, lowThreshold: 30, highThreshold: 60 },
-            'running': { base: 11.0, lowThreshold: 20, highThreshold: 40 },
-            'cycling': { base: 8.0, lowThreshold: 30, highThreshold: 60 },
-            'swimming': { base: 8.0, lowThreshold: 20, highThreshold: 45 }
-        };
-        
-        const config = metConfig[exerciseType] || { base: 6.0, lowThreshold: 30, highThreshold: 60 };
-        
-        // 根据时长调整强度
-        if (duration < config.lowThreshold) {
-            return config.base * 0.8; // 低强度
-        } else if (duration > config.highThreshold) {
-            return config.base * 1.3; // 高强度
-        } else {
-            return config.base; // 中等强度
-        }
-    }
-    
-    function calculateCalories() {
-        const type = exerciseType.value;
-        const dur = parseInt(duration.value);
-        
-        if (type && dur) {
-            const met = getSmartMET(type, dur);
-            const calories = Math.round(met * userWeight * (dur / 60));
-            caloriesPreview.value = calories;
-            
-            // 显示自动判断的强度
-            let intensityText = '';
-            if (met < 6) intensityText = '低强度';
-            else if (met > 10) intensityText = '高强度';
-            else intensityText = '中等强度';
-            
-            caloriesPreview.placeholder = `预计消耗 ${calories} kcal (${intensityText})`;
-        } else {
-            caloriesPreview.value = '';
-            caloriesPreview.placeholder = '填写信息后显示预计消耗';
-        }
-    }
-    
-    exerciseType.addEventListener('change', calculateCalories);
-    duration.addEventListener('input', calculateCalories);
     
     // 运动类型对应的常见运动名称
     const exerciseNames = {
