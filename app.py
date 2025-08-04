@@ -422,20 +422,29 @@ class FoodAnalyzer:
     
     def analyze_comprehensive(self, food_description, user_profile=None, meal_type="未指定"):
         """综合分析 - 使用AI + 本地数据库"""
+        logger.info(f"开始综合分析: {food_description}")
+        
         try:
             # 1. 使用AI识别食物
             ai_result = self._call_ai_analysis(food_description, user_profile, meal_type)
+            logger.info(f"AI分析结果: {ai_result}")
             
             # 2. 本地数据库验证和补充
             enhanced_result = self._enhance_with_local_db(ai_result, food_description)
+            logger.info(f"数据库增强结果: {enhanced_result}")
             
             # 3. 生成个性化建议
             personalized_result = self._add_personalization(enhanced_result, user_profile, meal_type)
+            logger.info(f"个性化结果: {personalized_result}")
+            
+            # 4. 确保关键数据有值
+            personalized_result = self._ensure_valid_result(personalized_result, food_description, meal_type)
             
             return personalized_result
             
         except Exception as e:
             logger.error(f"综合分析失败: {str(e)}")
+            logger.info("使用兜底结果")
             return self._generate_fallback_result(food_description, meal_type)
     
     def _call_ai_analysis(self, food_description, user_profile, meal_type):
@@ -566,16 +575,93 @@ class FoodAnalyzer:
         
         return bmr * activity_multiplier.get(activity_level, 1.55)
     
+    def _ensure_valid_result(self, result, food_description, meal_type):
+        """确保结果数据有效性"""
+        # 如果AI分析结果为0或无效，使用基于食物描述的估算
+        if not result.get('total_calories') or result.get('total_calories') == 0:
+            logger.warning("AI分析结果缺失，使用描述估算")
+            estimated = self._estimate_from_description(food_description)
+            result.update(estimated)
+        
+        # 确保所有必需字段存在
+        defaults = {
+            'food_items_with_emoji': [f'🍽️ {food_description}'],
+            'total_calories': result.get('total_calories', 350),
+            'total_protein': result.get('total_protein', 15.0),
+            'total_carbs': result.get('total_carbs', 45.0),
+            'total_fat': result.get('total_fat', 12.0),
+            'total_fiber': result.get('total_fiber', 3.0),
+            'total_sodium': result.get('total_sodium', 300.0),
+            'health_score': result.get('health_score', 7.0),
+            'meal_suitability': result.get('meal_suitability', f'适合{meal_type}'),
+            'nutrition_highlights': result.get('nutrition_highlights', ['🍽️ 提供基础营养', '⚡ 补充身体能量']),
+            'dietary_suggestions': result.get('dietary_suggestions', ['🥬 建议搭配蔬菜', '🚰 记得多喝水']),
+            'personalized_assessment': result.get('personalized_assessment', '基于食物描述的营养评估，建议配合均衡饮食。')
+        }
+        
+        for key, default_value in defaults.items():
+            if key not in result or not result[key]:
+                result[key] = default_value
+        
+        return result
+    
+    def _estimate_from_description(self, food_description):
+        """基于食物描述估算营养成分"""
+        # 简单的关键词匹配估算
+        total_calories = 0
+        total_protein = 0
+        total_carbs = 0
+        total_fat = 0
+        total_fiber = 0
+        
+        # 检查描述中的食物关键词
+        for food_key, nutrition in self.nutrition_db.items():
+            if food_key in food_description:
+                # 估算分量
+                portion = 1.0
+                if '两个' in food_description or '2个' in food_description:
+                    portion = 2.0
+                elif '一碗' in food_description:
+                    portion = 1.2
+                elif '一杯' in food_description:
+                    portion = 1.0
+                
+                total_calories += nutrition['calories'] * portion
+                total_protein += nutrition['protein'] * portion
+                total_carbs += nutrition['carbs'] * portion
+                total_fat += nutrition['fat'] * portion
+                total_fiber += nutrition['fiber'] * portion
+        
+        # 如果没有匹配到具体食物，使用默认估算
+        if total_calories == 0:
+            total_calories = 350
+            total_protein = 15.0
+            total_carbs = 45.0
+            total_fat = 12.0
+            total_fiber = 3.0
+        
+        return {
+            'total_calories': int(total_calories),
+            'total_protein': round(total_protein, 1),
+            'total_carbs': round(total_carbs, 1),
+            'total_fat': round(total_fat, 1),
+            'total_fiber': round(total_fiber, 1),
+            'health_score': min(10, max(5, 7 + (total_protein - 15) * 0.1))
+        }
+
     def _generate_fallback_result(self, food_description, meal_type):
         """生成兜底结果"""
+        estimated = self._estimate_from_description(food_description)
+        
         return {
             'food_items_with_emoji': [f'🍽️ {food_description}'],
-            'total_calories': 350,
-            'total_protein': 15.0,
-            'total_carbs': 45.0,
-            'total_fat': 12.0,
-            'total_fiber': 3.0,
-            'health_score': 7.0,
+            'total_calories': estimated['total_calories'],
+            'total_protein': estimated['total_protein'],
+            'total_carbs': estimated['total_carbs'],
+            'total_fat': estimated['total_fat'],
+            'total_fiber': estimated['total_fiber'],
+            'total_sodium': 300.0,
+            'health_score': estimated['health_score'],
             'meal_suitability': f'适合{meal_type}',
             'nutrition_highlights': ['🍽️ 提供基础营养', '⚡ 补充身体能量'],
             'dietary_suggestions': ['🥬 建议搭配蔬菜', '🚰 记得多喝水'],

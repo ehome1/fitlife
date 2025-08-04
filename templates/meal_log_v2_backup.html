@@ -154,7 +154,7 @@
 
 <div class="row g-4">
     <!-- ========================================
-         第二层：智能食物录入向导（合并为2步）
+         第二层：智能食物录入向导
          ======================================== -->
     <div class="col-lg-6">
         <div class="card shadow-sm h-100">
@@ -165,7 +165,7 @@
             </div>
             
             <div class="card-body p-4">
-                <!-- 步骤指示器（简化为2步） -->
+                <!-- 步骤指示器 -->
                 <div class="wizard-steps mb-4">
                     <div class="step-indicator">
                         <div class="step active" data-step="1">
@@ -185,86 +185,83 @@
                 
                 <!-- 录入表单 -->
                 <form id="mealWizardForm">
-                    <!-- 步骤1：食物信息（合并基本信息和食物描述） -->
+                    <!-- 步骤1：基本信息 -->
                     <div class="wizard-step" data-step="1">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">📅 用餐日期</label>
-                                    <input type="date" class="form-control" id="mealDate" name="meal_date" required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">🍽️ 餐次选择</label>
-                                    <div class="meal-type-selector">
-                                        <div class="row g-2">
-                                            <div class="col-6">
-                                                <input type="radio" class="btn-check" name="meal_type" id="breakfast" value="breakfast" required>
-                                                <label class="btn btn-outline-warning w-100" for="breakfast">
-                                                    <i class="fas fa-sun me-2"></i>早餐
-                                                </label>
-                                            </div>
-                                            <div class="col-6">
-                                                <input type="radio" class="btn-check" name="meal_type" id="lunch" value="lunch" required>
-                                                <label class="btn btn-outline-success w-100" for="lunch">
-                                                    <i class="fas fa-sun me-2"></i>午餐
-                                                </label>
-                                            </div>
-                                            <div class="col-6">
-                                                <input type="radio" class="btn-check" name="meal_type" id="dinner" value="dinner" required>
-                                                <label class="btn btn-outline-primary w-100" for="dinner">
-                                                    <i class="fas fa-moon me-2"></i>晚餐
-                                                </label>
-                                            </div>
-                                            <div class="col-6">
-                                                <input type="radio" class="btn-check" name="meal_type" id="snack" value="snack" required>
-                                                <label class="btn btn-outline-secondary w-100" for="snack">
-                                                    <i class="fas fa-cookie-bite me-2"></i>零食
-                                                </label>
-                                            </div>
-                                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">📅 用餐日期</label>
+                            <input type="date" class="form-control" id="mealDate" name="meal_date" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">🍽️ 餐次选择</label>
+                            <div class="meal-type-selector">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input type="radio" class="btn-check" name="meal_type" id="breakfast" value="breakfast" required>
+                                        <label class="btn btn-outline-warning w-100" for="breakfast">
+                                            <i class="fas fa-sun me-2"></i>早餐
+                                        </label>
                                     </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">🥘 详细描述您的食物</label>
-                                    <textarea class="form-control" id="foodDescription" name="food_description" rows="8" 
-                                              placeholder="请详细描述您吃的食物，例如：
-• 一碗白米饭（约150g）
-• 两个煎蛋
-• 一杯牛奶（250ml）
-• 半盘西兰花炒牛肉
-
-提示：越详细的描述，AI分析越准确！" required></textarea>
-                                    <div class="form-text">
-                                        <i class="fas fa-lightbulb text-warning me-1"></i>
-                                        <strong>小贴士：</strong>包含食物种类、大概分量、烹饪方式等信息，AI会更准确分析营养成分
+                                    <div class="col-6">
+                                        <input type="radio" class="btn-check" name="meal_type" id="lunch" value="lunch" required>
+                                        <label class="btn btn-outline-success w-100" for="lunch">
+                                            <i class="fas fa-sun me-2"></i>午餐
+                                        </label>
                                     </div>
-                                </div>
-                                
-                                <!-- 快速输入建议 -->
-                                <div class="quick-input-suggestions">
-                                    <label class="form-label small text-muted">💡 快速输入建议：</label>
-                                    <div class="suggestions-container">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="一碗白米饭，两个煎蛋，一杯牛奶">
-                                            🍳 简单早餐
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="一份宫保鸡丁，一碗米饭，一盘清炒菠菜">
-                                            🍛 中式午餐
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="烤鸡胸肉200g，蔬菜沙拉一份，全麦面包两片">
-                                            🥗 健康晚餐
-                                        </button>
+                                    <div class="col-6">
+                                        <input type="radio" class="btn-check" name="meal_type" id="dinner" value="dinner" required>
+                                        <label class="btn btn-outline-primary w-100" for="dinner">
+                                            <i class="fas fa-moon me-2"></i>晚餐
+                                        </label>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="radio" class="btn-check" name="meal_type" id="snack" value="snack" required>
+                                        <label class="btn btn-outline-secondary w-100" for="snack">
+                                            <i class="fas fa-cookie-bite me-2"></i>零食
+                                        </label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- 步骤2：AI分析中 -->
+                    <!-- 步骤2：食物描述 -->
                     <div class="wizard-step" data-step="2" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">🥘 详细描述您的食物</label>
+                            <textarea class="form-control" id="foodDescription" name="food_description" rows="5" 
+                                      placeholder="请详细描述您吃的食物，例如：
+• 一碗白米饭（约150g）
+• 两个煎蛋
+• 一杯牛奶（250ml）
+• 半盘西兰花炒牛肉
+
+提示：越详细的描述，AI分析越准确！" required></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb text-warning me-1"></i>
+                                <strong>小贴士：</strong>包含食物种类、大概分量、烹饪方式等信息，AI会更准确分析营养成分
+                            </div>
+                        </div>
+                        
+                        <!-- 快速输入建议 -->
+                        <div class="quick-input-suggestions">
+                            <label class="form-label small text-muted">💡 快速输入建议：</label>
+                            <div class="suggestions-container">
+                                <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="一碗白米饭，两个煎蛋，一杯牛奶">\
+                                    🍳 简单早餐
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="一份宫保鸡丁，一碗米饭，一盘清炒菠菜">
+                                    🍛 中式午餐
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="烤鸡胸肉200g，蔬菜沙拉一份，全麦面包两片">
+                                    🥗 健康晚餐
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 步骤3：AI分析中 -->
+                    <div class="wizard-step" data-step="3" style="display: none;">
                         <div class="ai-analysis-section">
                             <div class="analysis-loading text-center py-5" id="analysisLoading">
                                 <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
@@ -282,8 +279,8 @@
                         </div>
                     </div>
                     
-                    <!-- 步骤3：确认保存 -->
-                    <div class="wizard-step" data-step="3" style="display: none;">
+                    <!-- 步骤4：确认保存 -->
+                    <div class="wizard-step" data-step="4" style="display: none;">
                         <div class="confirmation-section">
                             <div class="alert alert-success">
                                 <h5><i class="fas fa-check-circle me-2"></i>分析完成！</h5>
@@ -442,7 +439,7 @@
     border-bottom: 1px solid #f8f9fa;
 }
 
-/* 智能向导样式（简化为3步） */
+/* 智能向导样式 */
 .wizard-steps {
     margin-bottom: 30px;
 }
@@ -562,56 +559,6 @@
     background: #dee2e6;
 }
 
-/* 时间线样式 */
-.timeline-item {
-    position: relative;
-    padding-bottom: 20px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.timeline-item:last-child {
-    border-bottom: none;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -23px;
-    top: 5px;
-    width: 12px;
-    height: 12px;
-    background: #007bff;
-    border: 2px solid white;
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px #007bff;
-}
-
-.timeline-content {
-    padding-left: 10px;
-}
-
-.timeline-header {
-    display: flex;
-    justify-content: between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.timeline-header h6 {
-    margin-bottom: 0;
-    color: #495057;
-}
-
-.timeline-description {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-bottom: 8px;
-}
-
-.timeline-nutrition {
-    font-size: 0.8rem;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
     .nutrition-grid .row {
@@ -712,10 +659,10 @@ function setupEventListeners() {
 
 function nextStep() {
     if (validateCurrentStep()) {
-        if (currentStep === 1) {
+        if (currentStep === 2) {
             // 开始AI分析
             startAIAnalysis();
-        } else if (currentStep < 3) {
+        } else if (currentStep < 4) {
             currentStep++;
             updateWizardDisplay();
         }
@@ -735,12 +682,13 @@ function validateCurrentStep() {
     if (step === 1) {
         const mealDate = document.getElementById('mealDate').value;
         const mealType = document.querySelector('input[name="meal_type"]:checked');
-        const foodDescription = document.getElementById('foodDescription').value.trim();
         
         if (!mealDate || !mealType) {
             alert('请填写完整的基本信息');
             return false;
         }
+    } else if (step === 2) {
+        const foodDescription = document.getElementById('foodDescription').value.trim();
         
         if (!foodDescription) {
             alert('请描述您的食物');
@@ -779,14 +727,14 @@ function updateWizardDisplay() {
     
     prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
     
-    if (currentStep === 3) {
+    if (currentStep === 4) {
         nextBtn.style.display = 'none';
         saveBtn.style.display = 'block';
     } else {
         nextBtn.style.display = 'block';
         saveBtn.style.display = 'none';
         
-        if (currentStep === 2) {
+        if (currentStep === 3) {
             nextBtn.disabled = true;
             nextBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>分析中...';
         } else {
@@ -797,7 +745,7 @@ function updateWizardDisplay() {
 }
 
 async function startAIAnalysis() {
-    currentStep = 2;
+    currentStep = 3;
     updateWizardDisplay();
     
     const foodDescription = document.getElementById('foodDescription').value.trim();
@@ -827,7 +775,7 @@ async function startAIAnalysis() {
         if (result.success) {
             analysisResult = result.data;
             displayAnalysisResults(analysisResult);
-            currentStep = 3;
+            currentStep = 4;
             updateWizardDisplay();
         } else {
             throw new Error(result.error || 'AI分析失败');
@@ -836,7 +784,7 @@ async function startAIAnalysis() {
     } catch (error) {
         console.error('AI分析错误:', error);
         alert('AI分析失败: ' + error.message);
-        currentStep = 1;
+        currentStep = 2;
         updateWizardDisplay();
     }
 }
@@ -877,12 +825,6 @@ function displayAnalysisResults(result) {
 }
 
 function generateAnalysisResultHTML(result) {
-    // 修复数据映射问题 - 确保正确获取数值
-    const calories = result.total_calories || 0;
-    const protein = result.total_protein || 0;
-    const carbs = result.total_carbs || 0;
-    const fat = result.total_fat || 0;
-    const healthScore = result.health_score || 0;
     const foodItems = result.food_items_with_emoji || [];
     const highlights = result.nutrition_highlights || [];
     const suggestions = result.dietary_suggestions || [];
@@ -891,32 +833,32 @@ function generateAnalysisResultHTML(result) {
         <div class="ai-analysis-result">
             <div class="analysis-header mb-3">
                 <h5><i class="fas fa-robot text-primary me-2"></i>AI分析结果</h5>
-                <span class="badge bg-success">健康评分: ${healthScore}/10</span>
+                <span class="badge bg-success">健康评分: ${result.health_score || 0}/10</span>
             </div>
             
             <!-- 营养成分卡片 -->
             <div class="row g-3 mb-4">
                 <div class="col-6">
                     <div class="nutrition-mini-card">
-                        <div class="mini-card-value">${calories}</div>
+                        <div class="mini-card-value">${result.total_calories || 0}</div>
                         <div class="mini-card-label">🔥 热量 (kcal)</div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="nutrition-mini-card">
-                        <div class="mini-card-value">${protein}</div>
+                        <div class="mini-card-value">${result.total_protein || 0}</div>
                         <div class="mini-card-label">💪 蛋白质 (g)</div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="nutrition-mini-card">
-                        <div class="mini-card-value">${carbs}</div>
+                        <div class="mini-card-value">${result.total_carbs || 0}</div>
                         <div class="mini-card-label">🍞 碳水 (g)</div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="nutrition-mini-card">
-                        <div class="mini-card-value">${fat}</div>
+                        <div class="mini-card-value">${result.total_fat || 0}</div>
                         <div class="mini-card-label">💧 脂肪 (g)</div>
                     </div>
                 </div>
@@ -1011,14 +953,6 @@ function generateSummaryPreviewHTML(result) {
         'snack': '零食'
     }[mealType.value] || mealType.value;
     
-    // 修复数据映射问题
-    const calories = result.total_calories || 0;
-    const protein = result.total_protein || 0;
-    const carbs = result.total_carbs || 0;
-    const fat = result.total_fat || 0;
-    const fiber = result.total_fiber || 0;
-    const healthScore = result.health_score || 0;
-    
     return `
         <div class="summary-card">
             <div class="row">
@@ -1027,17 +961,17 @@ function generateSummaryPreviewHTML(result) {
                     <ul class="summary-list">
                         <li><strong>日期:</strong> ${mealDate}</li>
                         <li><strong>餐次:</strong> ${mealTypeText}</li>
-                        <li><strong>热量:</strong> ${calories} kcal</li>
-                        <li><strong>健康评分:</strong> ${healthScore}/10</li>
+                        <li><strong>热量:</strong> ${result.total_calories || 0} kcal</li>
+                        <li><strong>健康评分:</strong> ${result.health_score || 0}/10</li>
                     </ul>
                 </div>
                 <div class="col-md-6">
                     <h6>🎯 营养成分</h6>
                     <ul class="summary-list">
-                        <li>蛋白质: ${protein}g</li>
-                        <li>碳水化合物: ${carbs}g</li>
-                        <li>脂肪: ${fat}g</li>
-                        <li>膳食纤维: ${fiber}g</li>
+                        <li>蛋白质: ${result.total_protein || 0}g</li>
+                        <li>碳水化合物: ${result.total_carbs || 0}g</li>
+                        <li>脂肪: ${result.total_fat || 0}g</li>
+                        <li>膳食纤维: ${result.total_fiber || 0}g</li>
                     </ul>
                 </div>
             </div>
@@ -1305,4 +1239,56 @@ function displayHistoryTimeline(meals) {
     container.innerHTML = timelineHTML;
 }
 </script>
+
+<style>
+/* 时间线样式 */
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -23px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #007bff;
+}
+
+.timeline-content {
+    padding-left: 10px;
+}
+
+.timeline-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.timeline-header h6 {
+    margin-bottom: 0;
+    color: #495057;
+}
+
+.timeline-description {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.timeline-nutrition {
+    font-size: 0.8rem;
+}
+</style>
 {% endblock %}
