@@ -531,33 +531,20 @@ def analyze_food_with_ai(food_description):
         
     except Exception as e:
         logger.error(f"食物AI分析失败: {str(e)}")
-        error_msg = "AI分析暂时不可用"
-        if "rate" in str(e).lower() or "quota" in str(e).lower():
-            error_msg = "AI服务繁忙，请稍后重试"
-        elif "500" in str(e):
-            error_msg = "AI服务暂时不可用"
+        logger.error(f"食物描述: {cleaned_description}")  # 添加调试信息
+        logger.error(f"API密钥设置: {bool(os.getenv('GEMINI_API_KEY'))}")  # 检查API密钥
         
-        # 如果AI分析失败，返回基本估算
-        return {
-            'total_calories': 300,
-            'total_protein': 15.0,
-            'total_carbs': 40.0,
-            'total_fat': 10.0,
-            'food_items': ['混合食物(估算)'],
-            'health_score': 5,
-            'nutrition_balance': {
-                'protein_level': '适中',
-                'carbs_level': '适中', 
-                'fat_level': '适中',
-                'fiber_rich': False,
-                'vitamin_rich': False
-            },
-            'health_highlights': ['提供基础能量'],
-            'health_concerns': [error_msg + '，建议手动评估'],
-            'suggestions': ['搭配蔬菜水果，保持营养均衡'],
-            'meal_type_suitable': ['午餐', '晚餐'],
-            'analysis_note': f'{error_msg}，使用默认估算'
+        # 记录详细错误信息用于调试
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'food_description': cleaned_description,
+            'has_api_key': bool(os.getenv('GEMINI_API_KEY'))
         }
+        logger.error(f"详细错误信息: {error_details}")
+        
+        # 抛出异常而不是返回默认值，这样可以看到真正的错误
+        raise Exception(f"Gemini API调用失败: {str(e)}. 食物描述: {cleaned_description}")
 
 def analyze_exercise_with_ai(exercise_type, exercise_name, duration, user_profile):
     """使用Gemini AI分析运动，结合用户个人信息给出专业建议"""
