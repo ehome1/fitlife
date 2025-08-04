@@ -574,29 +574,21 @@ def analyze_food_with_ai(food_description, user_profile=None, meal_type="未指�
 """
         
         prompt = f"""
-你是一位专业的中国营养师和健康顾问，精通中式菜肴和食材。请结合用户个人信息，分析以下食物描述，提供个性化的营养评估。
+你是营养师，分析食物：{cleaned_description}
 
 {user_info}
-食物描述：{cleaned_description}
 
-分析任务：
-1. 识别具体食物并添加合适emoji，估算份量
-2. 基于《中国食物成分表》计算精确营养数据
-3. 结合用户信息和餐次，给出个性化健康评分
-4. 考虑用户运动情况，提供针对性建议
-
-请严格按照以下JSON格式返回，不要包含任何其他文字：
-
+严格按JSON格式返回：
 {{
-    "food_items_with_emoji": ["🍚 白米饭(150g)", "🥚 煎蛋(2个)", "🥛 牛奶(250ml)"],
-    "total_calories": 总热量数字（整数），
-    "total_protein": 总蛋白质数字（保留1位小数），
-    "total_carbs": 总碳水化合物数字（保留1位小数），
-    "total_fat": 总脂肪数字（保留1位小数），
-    "health_score": 健康评分数字（1-10，考虑用户情况），
-    "meal_suitability": "很适合早餐|适合午餐|适合晚餐",
+    "food_items_with_emoji": ["🍚 白米饭(150g)", "🥚 煎蛋(2个)"],
+    "total_calories": 350,
+    "total_protein": 15.0,
+    "total_carbs": 45.0,
+    "total_fat": 12.0,
+    "health_score": 7.5,
+    "meal_suitability": "适合{meal_type}",
     "nutrition_highlights": [
-        "🥚 鸡蛋: 提供优质完全蛋白质",
+        "🥚 鸡蛋: 提供优质蛋白质",
         "🥛 牛奶: 丰富钙质和维生素D",
         "🍚 米饭: 稳定的能量来源"
     ],
@@ -608,12 +600,7 @@ def analyze_food_with_ai(food_description, user_profile=None, meal_type="未指�
     "personalized_assessment": "根据你的运动计划和身体状况，这餐营养搭配的个性化评估"
 }}
 
-重要要求：
-- food_items_with_emoji必须包含合适的emoji和具体重量
-- nutrition_highlights先说食材，再说营养价值
-- dietary_suggestions要以鼓励为主，避免过多批评
-- personalized_assessment要结合用户运动和体重等信息
-- 如果用户有运动记录，要在评估中体现运动与饮食的配合
+要求：结合用户信息给出个性化建议，以鼓励为主
 """
         
         # 使用重试逻辑调用API
@@ -996,10 +983,11 @@ def api_analyze_food():
         if not food_description:
             return jsonify({'error': '食物描述不能为空'}), 400
         
-        # 临时使用简化版本来排查问题
-        logger.info("使用简化版AI分析...")
-        analysis_result = analyze_food_simple(food_description, meal_type)
-        logger.info(f"简化AI分析完成")
+        # 使用完整个性化AI分析
+        logger.info("使用完整个性化AI分析...")
+        recent_exercises = get_recent_exercises(current_user.id)
+        analysis_result = analyze_food_with_ai(food_description, current_user.profile, meal_type, recent_exercises)
+        logger.info(f"完整AI分析完成")
         
         return jsonify({
             'success': True,
