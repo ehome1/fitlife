@@ -97,7 +97,7 @@
             <div class="card-body">
                 <form method="POST">
                     <div class="mb-3">
-                        <label for="meal_date" class="form-label">📅 用餐日期</label>
+                        <label class="form-label">📅 用餐日期</label>
                         <input type="date" class="form-control" id="meal_date" name="meal_date" required>
                     </div>
                     
@@ -132,7 +132,7 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="food_description" class="form-label">📋 食物描述</label>
+                        <label class="form-label">📋 食物描述</label>
                         <textarea class="form-control" id="food_description" name="food_description" 
                                   rows="3" placeholder="例：一碗白米饭,两个煎蛋,一杯牛奶,半个苹果" required></textarea>
                         <div class="form-text">
@@ -745,11 +745,78 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// 简化测试函数
+function testAIAnalysis() {
+    const foodDescription = document.getElementById('food_description');
+    const analyzeButton = document.getElementById('analyzeFood');
+    
+    if (!foodDescription.value.trim()) {
+        alert('请输入食物描述');
+        return;
+    }
+    
+    console.log('测试AI分析开始');
+    analyzeButton.disabled = true;
+    analyzeButton.innerHTML = '🤖 分析中...';
+    
+    // 显示调试信息
+    const foodContainer = document.getElementById('stream_foods_emoji') || document.getElementById('stream_foods');
+    if (foodContainer) {
+        foodContainer.innerHTML = `
+        <div class="alert alert-info">
+            <h6>🚀 测试AI分析</h6>
+            <p><strong>食物:</strong> ${foodDescription.value}</p>
+            <p><strong>时间:</strong> ${new Date().toLocaleTimeString()}</p>
+        </div>`;
+    }
+    
+    // 调用API
+    fetch('/api/analyze-food', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            description: foodDescription.value,
+            meal_type: document.querySelector('input[name="meal_type"]:checked')?.value || 'breakfast'
+        })
+    })
+    .then(response => {
+        console.log('API响应状态:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('API响应数据:', data);
+        if (foodContainer) {
+            foodContainer.innerHTML = `
+            <div class="alert alert-success">
+                <h6>✅ 成功!</h6>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            </div>`;
+        }
+    })
+    .catch(error => {
+        console.error('错误:', error);
+        if (foodContainer) {
+            foodContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <h6>❌ 错误</h6>
+                <p>${error.message}</p>
+            </div>`;
+        }
+    })
+    .finally(() => {
+        analyzeButton.disabled = false;
+        analyzeButton.innerHTML = '<i class="fas fa-magic me-2"></i>🤖 AI智能分析';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const mealDate = document.getElementById('meal_date');
     const foodDescription = document.getElementById('food_description');
     const analyzeButton = document.getElementById('analyzeFood');
     const submitButton = document.getElementById('submitForm');
+    
+    // 绑定测试函数
+    analyzeButton.addEventListener('click', testAIAnalysis);
     
     // 设置默认日期为今天
     if (!mealDate.value) {
