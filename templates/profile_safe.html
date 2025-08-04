@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}个人资料 - FitLife{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-center mb-4">
+                <i class="fas fa-user-circle me-3 text-primary"></i>个人资料
+            </h2>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- 基本信息 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-id-card me-2"></i>基本信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if user_data.profile %}
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>身高:</strong></td>
+                            <td>{{ user_data.profile.height or '未设置' }} {% if user_data.profile.height %}cm{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>体重:</strong></td>
+                            <td>{{ user_data.profile.weight or '未设置' }} {% if user_data.profile.weight %}kg{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>年龄:</strong></td>
+                            <td>{{ user_data.profile.age or '未设置' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>性别:</strong></td>
+                            <td>{{ user_data.profile.gender or '未设置' }}</td>
+                        </tr>
+                    </table>
+                    
+                    <!-- BMI计算 -->
+                    {% if user_data.profile.height and user_data.profile.weight %}
+                    <hr>
+                    <div class="text-center">
+                        {% set bmi = (user_data.profile.weight / ((user_data.profile.height / 100) ** 2)) | round(1) %}
+                        <h4 class="text-primary">BMI: {{ bmi }}</h4>
+                        <span class="badge {% if bmi < 18.5 %}bg-warning{% elif bmi < 24 %}bg-success{% elif bmi < 28 %}bg-warning{% else %}bg-danger{% endif %}">
+                            {% if bmi < 18.5 %}
+                                偏瘦
+                            {% elif bmi < 24 %}
+                                正常
+                            {% elif bmi < 28 %}
+                                过重
+                            {% else %}
+                                肥胖
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-user-plus fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">请先完善个人资料</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('profile_setup') }}" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>编辑资料
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 账户信息 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-cog me-2"></i>账户信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>用户名:</strong></td>
+                            <td>{{ user_data.username }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>邮箱:</strong></td>
+                            <td>{{ user_data.email }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>注册时间:</strong></td>
+                            <td>{{ user_data.created_at.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                    </table>
+                    
+                    <!-- 使用统计 -->
+                    <hr>
+                    <h6 class="mb-3">使用统计</h6>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h4 class="text-primary">{{ user_data.meal_logs_count }}</h4>
+                            <small class="text-muted">饮食记录</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-success">{{ user_data.exercise_logs_count }}</h4>
+                            <small class="text-muted">运动记录</small>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-warning">{{ user_data.goals_count }}</h4>
+                            <small class="text-muted">健身目标</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-rocket me-2"></i>快捷操作
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('meal_log_v2') }}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-utensils d-block mb-2"></i>
+                                饮食打卡
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('exercise_log') }}" class="btn btn-outline-success w-100">
+                                <i class="fas fa-running d-block mb-2"></i>
+                                运动打卡
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('progress') }}" class="btn btn-outline-info w-100">
+                                <i class="fas fa-chart-line d-block mb-2"></i>
+                                查看进度
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('settings') }}" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-cog d-block mb-2"></i>
+                                应用设置
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统状态提示 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h6><i class="fas fa-info-circle me-2"></i>系统状态</h6>
+                <p class="mb-0">系统正在优化中，某些高级功能可能暂时不可用。我们正在努力为您提供更好的体验！</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

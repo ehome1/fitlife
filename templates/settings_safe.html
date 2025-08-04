@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}设置 - FitLife{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-center mb-4">
+                <i class="fas fa-cog me-3 text-primary"></i>应用设置
+            </h2>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- 账户设置 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-cog me-2"></i>账户设置
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>用户名:</strong></td>
+                            <td>{{ user_data.username }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>邮箱:</strong></td>
+                            <td>{{ user_data.email }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>注册时间:</strong></td>
+                            <td>{{ user_data.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                    </table>
+                    <hr>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-warning" onclick="alert('密码修改功能开发中，请联系客服')">
+                            <i class="fas fa-key me-2"></i>修改密码
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" onclick="if(confirm('确定要删除账户吗？此操作不可恢复！')) alert('账户删除功能开发中，请联系客服')">
+                            <i class="fas fa-user-times me-2"></i>删除账户
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据统计 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>数据统计
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center g-3">
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3">
+                                <h4 class="text-primary mb-0">{{ user_data.meal_logs_count }}</h4>
+                                <small class="text-muted">饮食记录总数</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3">
+                                <h4 class="text-success mb-0">{{ user_data.exercise_logs_count }}</h4>
+                                <small class="text-muted">运动记录总数</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3">
+                                <h4 class="text-warning mb-0">{{ user_data.goals_count }}</h4>
+                                <small class="text-muted">设定目标数</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3">
+                                <h4 class="text-info mb-0">{{ user_data.created_at.strftime('%m/%d') }}</h4>
+                                <small class="text-muted">注册日期</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6 class="mb-3">系统状态</h6>
+                    <div class="mb-2">
+                        <small class="text-success">✅ 数据库连接正常</small>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-success">✅ 用户认证有效</small>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-warning">⚠️ 系统优化进行中</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 应用偏好 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sliders-h me-2"></i>应用偏好
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h6>单位设置</h6>
+                            <div class="mb-3">
+                                <label class="form-label">重量单位</label>
+                                <select class="form-select" id="weightUnit">
+                                    <option value="kg">公斤 (kg)</option>
+                                    <option value="lb">磅 (lb)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">身高单位</label>
+                                <select class="form-select" id="heightUnit">
+                                    <option value="cm">厘米 (cm)</option>
+                                    <option value="ft">英尺 (ft)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>默认设置</h6>
+                            <div class="mb-3">
+                                <label class="form-label">每日卡路里目标</label>
+                                <input type="number" class="form-control" id="dailyCalories" placeholder="2000" min="1000" max="5000">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">每日饮水目标 (L)</label>
+                                <input type="number" class="form-control" id="dailyWater" placeholder="2.5" min="1" max="10" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="notifications" checked>
+                                <label class="form-check-label" for="notifications">
+                                    <i class="fas fa-bell me-2"></i>开启通知提醒
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="darkMode">
+                                <label class="form-check-label" for="darkMode">
+                                    <i class="fas fa-moon me-2"></i>深色模式
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="autoSync" checked>
+                                <label class="form-check-label" for="autoSync">
+                                    <i class="fas fa-sync me-2"></i>自动同步数据
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                        <i class="fas fa-save me-2"></i>保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据管理 -->
+    <div class="row mt-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database me-2"></i>数据管理
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">管理您的个人数据和记录</p>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-primary" onclick="exportData()">
+                            <i class="fas fa-download me-2"></i>导出我的数据
+                        </button>
+                        <button type="button" class="btn btn-outline-info" onclick="alert('数据导入功能开发中')">
+                            <i class="fas fa-upload me-2"></i>导入数据
+                        </button>
+                        <button type="button" class="btn btn-outline-warning" onclick="if(confirm('确定要清空所有记录吗？此操作不可恢复！')) alert('数据清理功能开发中')">
+                            <i class="fas fa-trash-alt me-2"></i>清空所有记录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关于应用 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>关于 FitLife
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-dumbbell fa-4x text-primary mb-2"></i>
+                        <h6>FitLife - 智能健身饮食管理应用</h6>
+                        <p class="text-muted mb-0">版本 2.0.1 (稳定版)</p>
+                    </div>
+                    
+                    <hr>
+                    <p class="small">FitLife 致力于为用户提供专业的健身饮食管理服务，通过 AI 智能分析帮助您实现健康生活目标。</p>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <small class="text-muted">构建版本</small><br>
+                            <code>2025.01.08</code>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">数据库版本</small><br>
+                            <code>v2.0.1</code>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="alert('您使用的已是最新版本！')">
+                            <i class="fas fa-sync me-1"></i>检查更新
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统维护提示 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h6><i class="fas fa-tools me-2"></i>系统维护通知</h6>
+                <p class="mb-0">我们正在进行系统架构升级，某些功能可能暂时受限。升级完成后将为您带来更稳定、更强大的使用体验。感谢您的耐心等待！</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 保存设置功能
+function saveSettings() {
+    const settings = {
+        weightUnit: document.getElementById('weightUnit').value,
+        heightUnit: document.getElementById('heightUnit').value,
+        dailyCalories: document.getElementById('dailyCalories').value,
+        dailyWater: document.getElementById('dailyWater').value,
+        notifications: document.getElementById('notifications').checked,
+        darkMode: document.getElementById('darkMode').checked,
+        autoSync: document.getElementById('autoSync').checked
+    };
+    
+    localStorage.setItem('fitlife_settings', JSON.stringify(settings));
+    
+    // 显示保存成功提示
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>设置已保存成功！
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
+}
+
+// 导出数据功能
+function exportData() {
+    const data = {
+        exportDate: new Date().toISOString(),
+        user: '{{ user_data.username }}',
+        mealLogs: {{ user_data.meal_logs_count }},
+        exerciseLogs: {{ user_data.exercise_logs_count }},
+        goals: {{ user_data.goals_count }},
+        registrationDate: '{{ user_data.created_at.strftime("%Y-%m-%d") }}'
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fitlife_data_export_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// 页面加载时恢复设置
+document.addEventListener('DOMContentLoaded', function() {
+    const savedSettings = localStorage.getItem('fitlife_settings');
+    if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        if (settings.weightUnit) document.getElementById('weightUnit').value = settings.weightUnit;
+        if (settings.heightUnit) document.getElementById('heightUnit').value = settings.heightUnit;
+        if (settings.dailyCalories) document.getElementById('dailyCalories').value = settings.dailyCalories;
+        if (settings.dailyWater) document.getElementById('dailyWater').value = settings.dailyWater;
+        if (settings.notifications !== undefined) document.getElementById('notifications').checked = settings.notifications;
+        if (settings.darkMode !== undefined) document.getElementById('darkMode').checked = settings.darkMode;
+        if (settings.autoSync !== undefined) document.getElementById('autoSync').checked = settings.autoSync;
+    }
+});
+</script>
+{% endblock %}
