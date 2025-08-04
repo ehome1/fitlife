@@ -446,37 +446,53 @@ def get_recent_exercises(user_id, days=7):
         logger.error(f"获取运动记录失败: {str(e)}")
         return "运动记录获取失败"
 
-def analyze_food_simple(food_description, meal_type="未指定"):
-    """简化版AI食物分析 - 用于排查超时问题"""
-    logger.info(f"简化分析开始: {food_description}")
+def analyze_food_with_database_prompt(food_description, meal_type="未指定", user_profile=None):
+    """使用数据库prompt模板进行AI食物分析"""
+    logger.info(f"数据库prompt分析开始: {food_description}")
     
-    # 生成简单缓存键
-    cache_key = hashlib.md5(f"simple_{food_description.lower()}".encode()).hexdigest()
+    # 生成缓存键
+    cache_key = hashlib.md5(f"db_{food_description.lower()}_{meal_type}".encode()).hexdigest()
     
     # 检查缓存
     if cache_key in ai_analysis_cache:
-        logger.info("使用缓存的简化分析结果")
+        logger.info("使用缓存的数据库prompt分析结果")
         return ai_analysis_cache[cache_key]
     
     try:
-        # 最简单的prompt
-        prompt = f"""
-你是营养师，请分析食物：{food_description}
-
-严格按JSON格式返回：
-{{
-    "food_items_with_emoji": ["🍚 白米饭(150g)"],
-    "total_calories": 300,
-    "total_protein": 8.0,
-    "total_carbs": 60.0,
-    "total_fat": 2.0,
-    "health_score": 7.5,
-    "meal_suitability": "适合{meal_type}",
-    "nutrition_highlights": ["🍚 米饭: 提供能量"],
-    "dietary_suggestions": ["搭配蔬菜更营养"],
-    "personalized_assessment": "营养搭配合理"
-}}
-"""
+        # 从数据库获取激活的饮食分析prompt
+        prompt_template = PromptTemplate.query.filter_by(
+            type='food',
+            is_active=True
+        ).first()
+        
+        if not prompt_template:
+            logger.error("未找到激活的饮食分析prompt模板")
+            raise Exception("未找到可用的AI分析模板，请联系管理员")
+        
+        # 准备变量替换
+        variables = {
+            'food_description': food_description,
+            'meal_type': meal_type
+        }
+        
+        # 如果有用户信息，添加用户变量
+        if user_profile:
+            variables.update({
+                'user_age': user_profile.age or '未知',
+                'user_gender': '男性' if user_profile.gender == 'male' else '女性' if user_profile.gender else '未知',
+                'user_height': user_profile.height or '未知',
+                'user_weight': user_profile.weight or '未知',
+                'user_activity': user_profile.activity_level or '未知'
+            })
+        
+        # 使用模板格式化prompt
+        try:
+            prompt = prompt_template.prompt_content.format(**variables)
+        except KeyError as e:
+            logger.warning(f"Prompt模板变量缺失: {e}, 使用原始模板")
+            prompt = prompt_template.prompt_content
+        
+        logger.info(f"使用数据库prompt模板: {prompt_template.name}")
         
         logger.info("调用Gemini API...")
         response_text = call_gemini_api_with_retry(prompt)
@@ -520,11 +536,11 @@ def analyze_food_simple(food_description, meal_type="未指定"):
         if len(ai_analysis_cache) < 100:
             ai_analysis_cache[cache_key] = result
         
-        logger.info("简化分析完成")
+        logger.info("数据库prompt分析完成")
         return result
         
     except Exception as e:
-        logger.error(f"简化AI分析失败: {str(e)}")
+        logger.error(f"数据库prompt AI分析失败: {str(e)}")
         # 返回兜底数据
         return {
             'food_items_with_emoji': [f'🍽️ {food_description}'],
@@ -983,10 +999,10 @@ def api_analyze_food():
         if not food_description:
             return jsonify({'error': '食物描述不能为空'}), 400
         
-        # 优先使用简化版本确保稳定性
-        logger.info("使用简化版AI分析...")
-        analysis_result = analyze_food_simple(food_description, meal_type)
-        logger.info(f"简化AI分析完成")
+        # 使用数据库prompt模板进行AI分析
+        logger.info("使用数据库prompt AI分析...")
+        analysis_result = analyze_food_with_database_prompt(food_description, meal_type, current_user.profile)
+        logger.info(f"数据库prompt AI分析完成")
         
         return jsonify({
             'success': True,
@@ -1806,6 +1822,62 @@ def debug():
         <li><a href="/init-database">数据库初始化</a></li>
     </ul>
     """
+
+@app.route('/init-database')
+def init_database_route():
+    """初始化数据库和默认数据的路由"""
+    try:
+        db.create_all()
+        
+        # 检查管理员用户
+        admin = AdminUser.query.filter_by(username='admin').first()
+        if not admin:
+            admin = AdminUser(
+                username='admin',
+                email='admin@fitlife.com',
+                password_hash=generate_password_hash('admin123')
+            )
+            db.session.add(admin)
+            db.session.commit()
+        
+        # 检查并创建默认prompt模板
+        food_prompt = PromptTemplate.query.filter_by(type='food', is_active=True).first()
+        if not food_prompt:
+            default_food_prompt = PromptTemplate(
+                name='默认饮食分析模板',
+                type='food',
+                prompt_content='''分析食物: {food_description}
+
+返回JSON格式:
+{{
+    "food_items_with_emoji": ["🍚 白米饭(150g)"],
+    "total_calories": 350,
+    "total_protein": 15.0,
+    "total_carbs": 45.0,
+    "total_fat": 12.0,
+    "health_score": 7.5,
+    "meal_suitability": "适合{meal_type}",
+    "nutrition_highlights": ["🍚 米饭: 提供能量"],
+    "dietary_suggestions": ["搭配蔬菜更营养"],
+    "personalized_assessment": "营养评估"
+}}''',
+                is_active=True,
+                created_by=admin.id if admin else None
+            )
+            db.session.add(default_food_prompt)
+            db.session.commit()
+            
+        return '''
+        <h1>✅ 数据库初始化完成</h1>
+        <p>✅ 管理员账户: admin / admin123</p>
+        <p>✅ 默认饮食分析prompt模板已创建</p>
+        <hr>
+        <p><a href="/admin">进入管理后台</a></p>
+        <p><a href="/admin/prompts">管理Prompt模板</a></p>
+        '''
+        
+    except Exception as e:
+        return f'<h1>❌ 数据库初始化失败</h1><p>错误: {str(e)}</p>'
 
 # Duplicate /health route removed - keeping the first definition only
 
