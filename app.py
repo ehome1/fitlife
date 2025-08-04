@@ -1657,23 +1657,7 @@ def debug():
     </ul>
     """
 
-@app.route('/health')
-def health_check():
-    """健康检查"""
-    try:
-        return {
-            "status": "healthy",
-            "timestamp": str(datetime.now()),
-            "vercel": os.getenv('VERCEL', 'false'),
-            "gemini_key_set": bool(os.getenv('GEMINI_API_KEY')),
-            "database_url_set": bool(os.getenv('DATABASE_URL'))
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy", 
-            "error": str(e),
-            "timestamp": str(datetime.now())
-        }, 500
+# Duplicate /health route removed - keeping the first definition only
 
 # 移除自动初始化，避免Vercel部署时的问题
 # if __name__ == '__main__':
