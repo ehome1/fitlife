@@ -163,13 +163,36 @@ class MealLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date = db.Column(db.Date, nullable=False, default=lambda: datetime.now(timezone.utc).date())
     meal_type = db.Column(db.String(20), nullable=False)  # breakfast, lunch, dinner, snack
-    food_name = db.Column(db.String(100), nullable=False)
-    quantity = db.Column(db.Float, nullable=False)  # grams
-    calories = db.Column(db.Integer, nullable=False)
-    protein = db.Column(db.Float)  # grams
-    carbs = db.Column(db.Float)  # grams
-    fat = db.Column(db.Float)  # grams
+    
+    # 原始输入信息
+    food_description = db.Column(db.Text)  # 用户输入的原始描述
+    food_items_json = db.Column(db.JSON)  # AI识别的食物列表
+    
+    # 营养成分 (总计)
+    total_calories = db.Column(db.Integer, nullable=False)
+    total_protein = db.Column(db.Float)  # grams
+    total_carbs = db.Column(db.Float)  # grams  
+    total_fat = db.Column(db.Float)  # grams
+    total_fiber = db.Column(db.Float)  # grams - 新增
+    total_sodium = db.Column(db.Float)  # mg - 新增
+    
+    # AI分析结果
+    health_score = db.Column(db.Float)  # 1-10分
+    meal_suitability = db.Column(db.String(100))  # 餐次适合度描述
+    nutrition_highlights = db.Column(db.JSON)  # 营养亮点列表
+    dietary_suggestions = db.Column(db.JSON)  # 饮食建议列表
+    personalized_assessment = db.Column(db.Text)  # 个性化评估
+    
+    # 兼容性字段 (保持向后兼容)
+    food_name = db.Column(db.String(100))  # 主要食物名称
+    quantity = db.Column(db.Float)  # 总重量估算(grams)
+    calories = db.Column(db.Integer)  # 等同于total_calories
+    protein = db.Column(db.Float)  # 等同于total_protein
+    carbs = db.Column(db.Float)  # 等同于total_carbs
+    fat = db.Column(db.Float)  # 等同于total_fat
+    
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     @property
     def meal_type_display(self):
@@ -380,6 +403,184 @@ def calculate_smart_intensity_and_calories(exercise_type, duration, weight):
     # 卡路里 = MET × 体重(kg) × 时间(小时)
     calories = met * weight * (duration / 60)
     return round(calories), intensity
+
+class FoodAnalyzer:
+    """AI食物分析引擎 - 统一管理所有食物分析功能"""
+    
+    def __init__(self):
+        self.nutrition_db = self._load_nutrition_database()
+        
+    def _load_nutrition_database(self):
+        """加载本地营养数据库"""
+        return {
+            '白米饭': {'calories': 130, 'protein': 2.7, 'carbs': 28, 'fat': 0.3, 'fiber': 0.4},
+            '煎蛋': {'calories': 155, 'protein': 13, 'carbs': 1.1, 'fat': 11, 'fiber': 0},
+            '牛奶': {'calories': 42, 'protein': 3.4, 'carbs': 5, 'fat': 1, 'fiber': 0},
+            '鸡胸肉': {'calories': 165, 'protein': 31, 'carbs': 0, 'fat': 3.6, 'fiber': 0},
+            '西兰花': {'calories': 34, 'protein': 2.8, 'carbs': 7, 'fat': 0.4, 'fiber': 2.6},
+        }
+    
+    def analyze_comprehensive(self, food_description, user_profile=None, meal_type="未指定"):
+        """综合分析 - 使用AI + 本地数据库"""
+        try:
+            # 1. 使用AI识别食物
+            ai_result = self._call_ai_analysis(food_description, user_profile, meal_type)
+            
+            # 2. 本地数据库验证和补充
+            enhanced_result = self._enhance_with_local_db(ai_result, food_description)
+            
+            # 3. 生成个性化建议
+            personalized_result = self._add_personalization(enhanced_result, user_profile, meal_type)
+            
+            return personalized_result
+            
+        except Exception as e:
+            logger.error(f"综合分析失败: {str(e)}")
+            return self._generate_fallback_result(food_description, meal_type)
+    
+    def _call_ai_analysis(self, food_description, user_profile, meal_type):
+        """调用AI分析"""
+        prompt_template = PromptTemplate.query.filter_by(type='food', is_active=True).first()
+        if not prompt_template:
+            raise Exception("未找到AI分析模板")
+        
+        # 准备用户信息
+        user_info = ""
+        if user_profile:
+            user_info = f"用户：{user_profile.age}岁 {user_profile.gender} {user_profile.height}cm {user_profile.weight}kg"
+        
+        # 格式化prompt
+        variables = {
+            'food_description': food_description,
+            'meal_type': meal_type,
+            'user_info': user_info
+        }
+        
+        try:
+            prompt = prompt_template.prompt_content.format(**variables)
+        except KeyError:
+            prompt = prompt_template.prompt_content
+        
+        # 调用Gemini API
+        response_text = call_gemini_api_with_retry(prompt)
+        
+        # 解析JSON响应
+        return self._parse_ai_response(response_text)
+    
+    def _parse_ai_response(self, response_text):
+        """解析AI响应"""
+        try:
+            # 提取JSON部分
+            if '```json' in response_text:
+                json_start = response_text.find('```json') + 7
+                json_end = response_text.find('```', json_start)
+                json_text = response_text[json_start:json_end].strip()
+            elif '{' in response_text and '}' in response_text:
+                json_start = response_text.find('{')
+                json_end = response_text.rfind('}') + 1
+                json_text = response_text[json_start:json_end]
+            else:
+                json_text = response_text
+            
+            return json.loads(json_text)
+        except Exception as e:
+            logger.error(f"AI响应解析失败: {str(e)}")
+            raise
+    
+    def _enhance_with_local_db(self, ai_result, food_description):
+        """使用本地数据库增强AI结果"""
+        # 检查AI识别的食物是否在本地数据库中
+        food_items = ai_result.get('food_items_with_emoji', [])
+        enhanced_nutrition = {'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0, 'fiber': 0}
+        
+        for item in food_items:
+            # 简单的关键词匹配
+            for food_key, nutrition in self.nutrition_db.items():
+                if food_key in item:
+                    # 估算分量并累加营养
+                    portion = self._estimate_portion(item)
+                    for nutrient, value in nutrition.items():
+                        enhanced_nutrition[nutrient] += value * portion
+                    break
+        
+        # 如果本地数据库有匹配，使用增强后的数据
+        if enhanced_nutrition['calories'] > 0:
+            ai_result['total_calories'] = int(enhanced_nutrition['calories'])
+            ai_result['total_protein'] = round(enhanced_nutrition['protein'], 1)
+            ai_result['total_carbs'] = round(enhanced_nutrition['carbs'], 1)
+            ai_result['total_fat'] = round(enhanced_nutrition['fat'], 1)
+            ai_result['total_fiber'] = round(enhanced_nutrition['fiber'], 1)
+        
+        return ai_result
+    
+    def _estimate_portion(self, food_item):
+        """估算食物分量倍数"""
+        # 简单的分量估算逻辑
+        if '两个' in food_item or '2个' in food_item:
+            return 2.0
+        elif '三个' in food_item or '3个' in food_item:
+            return 3.0
+        elif '大碗' in food_item:
+            return 1.5
+        elif '小碗' in food_item:
+            return 0.8
+        return 1.0
+    
+    def _add_personalization(self, result, user_profile, meal_type):
+        """添加个性化建议"""
+        if not user_profile:
+            return result
+        
+        # 根据用户信息调整建议
+        age = user_profile.age or 25
+        weight = user_profile.weight or 70
+        activity_level = user_profile.activity_level or 'moderately_active'
+        
+        # 个性化评估
+        calories = result.get('total_calories', 0)
+        daily_needs = self._calculate_daily_needs(age, weight, activity_level)
+        meal_ratio = 0.3 if meal_type == 'breakfast' else 0.4 if meal_type == 'lunch' else 0.3
+        expected_calories = daily_needs * meal_ratio
+        
+        if calories > expected_calories * 1.2:
+            assessment = f"这餐热量({calories}kcal)略高于建议的{meal_type}摄入量({expected_calories:.0f}kcal)，建议适当减少分量或增加运动。"
+        elif calories < expected_calories * 0.8:
+            assessment = f"这餐热量({calories}kcal)偏低，可以适当增加营养密度高的食物。"
+        else:
+            assessment = f"这餐热量({calories}kcal)很适合您的{meal_type}需求，营养搭配合理！"
+        
+        result['personalized_assessment'] = assessment
+        return result
+    
+    def _calculate_daily_needs(self, age, weight, activity_level):
+        """计算每日热量需求"""
+        # 简化的BMR计算
+        bmr = 88.362 + (13.397 * weight) + (4.799 * 170) - (5.677 * age)  # 假设身高170cm
+        
+        activity_multiplier = {
+            'sedentary': 1.2,
+            'lightly_active': 1.375,
+            'moderately_active': 1.55,
+            'very_active': 1.725
+        }
+        
+        return bmr * activity_multiplier.get(activity_level, 1.55)
+    
+    def _generate_fallback_result(self, food_description, meal_type):
+        """生成兜底结果"""
+        return {
+            'food_items_with_emoji': [f'🍽️ {food_description}'],
+            'total_calories': 350,
+            'total_protein': 15.0,
+            'total_carbs': 45.0,
+            'total_fat': 12.0,
+            'total_fiber': 3.0,
+            'health_score': 7.0,
+            'meal_suitability': f'适合{meal_type}',
+            'nutrition_highlights': ['🍽️ 提供基础营养', '⚡ 补充身体能量'],
+            'dietary_suggestions': ['🥬 建议搭配蔬菜', '🚰 记得多喝水'],
+            'personalized_assessment': '基于食物描述的营养评估，建议配合均衡饮食。'
+        }
 
 def call_gemini_api_with_retry(prompt, max_retries=3, base_delay=1):
     """调用Gemini API并处理重试逻辑"""
@@ -933,6 +1134,12 @@ def meal_log_test():
         return render_template('meal_log.html', recent_meals=recent_meals)
     except Exception as e:
         return f"测试页面错误: {str(e)}", 500
+
+@app.route('/meal-log-v2')
+@login_required
+def meal_log_v2():
+    """新版饮食记录管理页面"""
+    return render_template('meal_log_v2.html')
 
 @app.route('/meal-log', methods=['GET', 'POST'])
 @login_required
@@ -1610,6 +1817,350 @@ def init_database():
     db.create_all()
     create_default_admin()
     create_default_prompts()
+
+# ================================
+# 新版API端点 v2.0 - RESTful设计
+# ================================
+
+@app.route('/api/v2/food/analyze', methods=['POST'])
+@login_required
+def api_v2_food_analyze():
+    """新版AI食物分析端点"""
+    try:
+        data = request.get_json()
+        food_description = data.get('food_description', '').strip()
+        meal_type = data.get('meal_type', '未指定')
+        
+        if not food_description:
+            return jsonify({'success': False, 'error': '食物描述不能为空'})
+        
+        # 获取用户信息
+        user_profile = current_user.profile
+        
+        # 使用新版食物分析引擎
+        analyzer = FoodAnalyzer()
+        analysis_result = analyzer.analyze_comprehensive(
+            food_description=food_description,
+            user_profile=user_profile,
+            meal_type=meal_type
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': analysis_result
+        })
+        
+    except Exception as e:
+        logger.error(f"v2食物分析API错误: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'分析失败: {str(e)}'
+        })
+
+@app.route('/api/v2/meals/', methods=['GET', 'POST'])
+@login_required
+def api_v2_meals():
+    """RESTful饮食记录端点"""
+    if request.method == 'GET':
+        # 获取饮食记录
+        try:
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 10, type=int)
+            date_filter = request.args.get('date')
+            
+            query = MealLog.query.filter_by(user_id=current_user.id)
+            
+            if date_filter:
+                try:
+                    filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
+                    query = query.filter(MealLog.date == filter_date)
+                except ValueError:
+                    return jsonify({'success': False, 'error': '日期格式错误'})
+            
+            meals = query.order_by(MealLog.date.desc(), MealLog.id.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'meals': [{
+                        'id': meal.id,
+                        'date': meal.date.isoformat(),
+                        'meal_type': meal.meal_type,
+                        'food_description': meal.food_description,
+                        'food_items_json': meal.food_items_json,
+                        'total_calories': meal.total_calories,
+                        'total_protein': meal.total_protein,
+                        'total_carbs': meal.total_carbs,
+                        'total_fat': meal.total_fat,
+                        'total_fiber': meal.total_fiber,
+                        'total_sodium': meal.total_sodium,
+                        'health_score': meal.health_score,
+                        'meal_suitability': meal.meal_suitability,
+                        'nutrition_highlights': meal.nutrition_highlights,
+                        'dietary_suggestions': meal.dietary_suggestions,
+                        'personalized_assessment': meal.personalized_assessment
+                    } for meal in meals.items],
+                    'pagination': {
+                        'page': meals.page,
+                        'pages': meals.pages,
+                        'per_page': meals.per_page,
+                        'total': meals.total
+                    }
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"获取饮食记录失败: {str(e)}")
+            return jsonify({'success': False, 'error': '获取记录失败'})
+    
+    elif request.method == 'POST':
+        # 创建饮食记录
+        try:
+            data = request.get_json()
+            food_description = data.get('food_description', '').strip()
+            meal_type = data.get('meal_type', '').strip()
+            meal_date = data.get('date')
+            
+            if not food_description or not meal_type:
+                return jsonify({'success': False, 'error': '食物描述和餐次不能为空'})
+            
+            # 解析日期
+            if meal_date:
+                try:
+                    parsed_date = datetime.strptime(meal_date, '%Y-%m-%d').date()
+                except ValueError:
+                    return jsonify({'success': False, 'error': '日期格式错误'})
+            else:
+                parsed_date = datetime.now(timezone.utc).date()
+            
+            # AI分析（可选）
+            analysis_result = None
+            if data.get('analyze', True):
+                analyzer = FoodAnalyzer()
+                user_profile = current_user.profile
+                analysis_result = analyzer.analyze_comprehensive(
+                    food_description=food_description,
+                    user_profile=user_profile,
+                    meal_type=meal_type
+                )
+            
+            # 创建记录
+            meal_log = MealLog(
+                user_id=current_user.id,
+                date=parsed_date,
+                meal_type=meal_type,
+                food_description=food_description
+            )
+            
+            # 如果有AI分析结果，填充数据
+            if analysis_result:
+                meal_log.food_items_json = analysis_result.get('food_items_with_emoji', [])
+                meal_log.total_calories = analysis_result.get('total_calories', 0)
+                meal_log.total_protein = analysis_result.get('total_protein', 0)
+                meal_log.total_carbs = analysis_result.get('total_carbs', 0)
+                meal_log.total_fat = analysis_result.get('total_fat', 0)
+                meal_log.total_fiber = analysis_result.get('total_fiber', 0)
+                meal_log.total_sodium = analysis_result.get('total_sodium', 0)
+                meal_log.health_score = analysis_result.get('health_score', 0)
+                meal_log.meal_suitability = analysis_result.get('meal_suitability', '')
+                meal_log.nutrition_highlights = analysis_result.get('nutrition_highlights', [])
+                meal_log.dietary_suggestions = analysis_result.get('dietary_suggestions', [])
+                meal_log.personalized_assessment = analysis_result.get('personalized_assessment', '')
+            
+            db.session.add(meal_log)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'id': meal_log.id,
+                    'message': '饮食记录创建成功',
+                    'analysis_result': analysis_result
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"创建饮食记录失败: {str(e)}")
+            db.session.rollback()
+            return jsonify({'success': False, 'error': f'创建失败: {str(e)}'})
+
+@app.route('/api/v2/nutrition/daily', methods=['GET'])
+@login_required
+def api_v2_nutrition_daily():
+    """今日营养统计端点"""
+    try:
+        target_date = request.args.get('date')
+        if target_date:
+            try:
+                date_obj = datetime.strptime(target_date, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'success': False, 'error': '日期格式错误'})
+        else:
+            date_obj = datetime.now(timezone.utc).date()
+        
+        # 获取当日所有饮食记录
+        daily_meals = MealLog.query.filter(
+            MealLog.user_id == current_user.id,
+            MealLog.date == date_obj
+        ).all()
+        
+        # 统计营养数据
+        total_nutrition = {
+            'calories': sum(meal.total_calories or 0 for meal in daily_meals),
+            'protein': sum(meal.total_protein or 0 for meal in daily_meals),
+            'carbs': sum(meal.total_carbs or 0 for meal in daily_meals),
+            'fat': sum(meal.total_fat or 0 for meal in daily_meals),
+            'fiber': sum(meal.total_fiber or 0 for meal in daily_meals),
+            'sodium': sum(meal.total_sodium or 0 for meal in daily_meals)
+        }
+        
+        # 营养目标（基于用户信息）
+        user_profile = current_user.profile
+        if user_profile:
+            daily_targets = {
+                'calories': int(user_profile.bmr * 1.55) if user_profile.bmr else 2000,
+                'protein': max(50, int((user_profile.weight or 70) * 1.2)),
+                'carbs': 250,
+                'fat': 65,
+                'fiber': 25,
+                'sodium': 2300
+            }
+        else:
+            daily_targets = {
+                'calories': 2000,
+                'protein': 50,
+                'carbs': 250,
+                'fat': 65,
+                'fiber': 25,
+                'sodium': 2300
+            }
+        
+        # 计算达成率
+        achievement_rates = {}
+        for nutrient, consumed in total_nutrition.items():
+            target = daily_targets[nutrient]
+            rate = min(100, (consumed / target * 100)) if target > 0 else 0
+            achievement_rates[nutrient] = round(rate, 1)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'date': date_obj.isoformat(),
+                'nutrition': total_nutrition,
+                'targets': daily_targets,
+                'achievement_rates': achievement_rates,
+                'meals_count': len(daily_meals),
+                'meals': [{
+                    'id': meal.id,
+                    'meal_type': meal.meal_type,
+                    'food_description': meal.food_description,
+                    'calories': meal.total_calories
+                } for meal in daily_meals]
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"获取每日营养统计失败: {str(e)}")
+        return jsonify({'success': False, 'error': '获取统计失败'})
+
+@app.route('/api/v2/nutrition/trends', methods=['GET'])
+@login_required
+def api_v2_nutrition_trends():
+    """营养趋势分析端点"""
+    try:
+        days = request.args.get('days', 7, type=int)
+        days = min(30, max(1, days))  # 限制1-30天
+        
+        end_date = datetime.now(timezone.utc).date()
+        start_date = end_date - timedelta(days=days-1)
+        
+        # 获取时间范围内的所有记录
+        meals = MealLog.query.filter(
+            MealLog.user_id == current_user.id,
+            MealLog.date >= start_date,
+            MealLog.date <= end_date
+        ).order_by(MealLog.date.asc()).all()
+        
+        # 按日期分组统计
+        daily_stats = {}
+        for meal in meals:
+            date_str = meal.date.isoformat()
+            if date_str not in daily_stats:
+                daily_stats[date_str] = {
+                    'date': date_str,
+                    'calories': 0,
+                    'protein': 0,
+                    'carbs': 0,
+                    'fat': 0,
+                    'fiber': 0,
+                    'meals_count': 0
+                }
+            
+            daily_stats[date_str]['calories'] += meal.total_calories or 0
+            daily_stats[date_str]['protein'] += meal.total_protein or 0
+            daily_stats[date_str]['carbs'] += meal.total_carbs or 0
+            daily_stats[date_str]['fat'] += meal.total_fat or 0
+            daily_stats[date_str]['fiber'] += meal.total_fiber or 0
+            daily_stats[date_str]['meals_count'] += 1
+        
+        # 填充缺失日期
+        trends_data = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.isoformat()
+            if date_str in daily_stats:
+                trends_data.append(daily_stats[date_str])
+            else:
+                trends_data.append({
+                    'date': date_str,
+                    'calories': 0,
+                    'protein': 0,
+                    'carbs': 0,
+                    'fat': 0,
+                    'fiber': 0,
+                    'meals_count': 0
+                })
+            current_date += timedelta(days=1)
+        
+        # 计算平均值和趋势
+        non_zero_days = [day for day in trends_data if day['calories'] > 0]
+        if non_zero_days:
+            averages = {
+                'calories': sum(day['calories'] for day in non_zero_days) / len(non_zero_days),
+                'protein': sum(day['protein'] for day in non_zero_days) / len(non_zero_days),
+                'carbs': sum(day['carbs'] for day in non_zero_days) / len(non_zero_days),
+                'fat': sum(day['fat'] for day in non_zero_days) / len(non_zero_days),
+                'fiber': sum(day['fiber'] for day in non_zero_days) / len(non_zero_days)
+            }
+        else:
+            averages = {
+                'calories': 0,
+                'protein': 0,
+                'carbs': 0,
+                'fat': 0,
+                'fiber': 0
+            }
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'period': {
+                    'start_date': start_date.isoformat(),
+                    'end_date': end_date.isoformat(),
+                    'days': days
+                },
+                'trends': trends_data,
+                'averages': averages,
+                'total_meals': len(meals),
+                'active_days': len(non_zero_days)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"获取营养趋势失败: {str(e)}")
+        return jsonify({'success': False, 'error': '获取趋势失败'})
 
 @app.route('/init-database')
 def init_db_route():
