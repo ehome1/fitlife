@@ -830,7 +830,8 @@ def api_analyze_food():
     """API端点：使用AI分析食物描述"""
     try:
         data = request.get_json()
-        food_description = data.get('food_description', '').strip()
+        # 支持两种字段格式：description 和 food_description
+        food_description = data.get('description', data.get('food_description', '')).strip()
         
         if not food_description:
             return jsonify({'error': '食物描述不能为空'}), 400
