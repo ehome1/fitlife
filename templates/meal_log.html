@@ -102,7 +102,7 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="meal_type" class="form-label">🍽️ 餐次选择</label>
+                        <label class="form-label">🍽️ 餐次选择</label>
                         <div class="row g-2">
                             <div class="col-6">
                                 <input type="radio" class="btn-check" name="meal_type" value="breakfast" id="breakfast" required>
@@ -803,7 +803,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="alert alert-info">
                 <h6>🚀 开始AI分析</h6>
                 <p><strong>食物:</strong> ${description}</p>
-                <p><strong>餐次:</strong> ${document.getElementById('meal_type').value}</p>
+                <p><strong>餐次:</strong> ${document.querySelector('input[name="meal_type"]:checked')?.value || '未选择'}</p>
                 <p><strong>开始时间:</strong> ${new Date().toLocaleTimeString()}</p>
                 <p>🤖 正在调用Gemini-2.5-Flash...</p>
             </div>`;
@@ -817,7 +817,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 60000);
         
         // 调用升级后的AI API，包含餐次信息
-        const mealType = document.getElementById('meal_type').value;
+        const mealType = document.querySelector('input[name="meal_type"]:checked')?.value || 'breakfast';
         fetch('/api/analyze-food', {
             method: 'POST',
             headers: {
