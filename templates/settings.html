@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block title %}设置 - FitLife{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="dashboard-header mb-4">
+            <h2 class="h3 text-center mb-0">
+                <i class="fas fa-cog me-3 text-primary"></i>⚙️ 应用设置
+            </h2>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 账户设置 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-cog me-2"></i>账户设置
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <input type="text" class="form-control" value="{{ current_user.username }}" readonly>
+                    <small class="text-muted">用户名无法修改</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">邮箱地址</label>
+                    <input type="email" class="form-control" value="{{ current_user.email }}" readonly>
+                    <small class="text-muted">如需修改邮箱请联系客服</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">注册时间</label>
+                    <input type="text" class="form-control" value="{{ current_user.created_at.strftime('%Y-%m-%d %H:%M') }}" readonly>
+                </div>
+                <hr>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-warning" onclick="changePassword()">
+                        <i class="fas fa-key me-2"></i>修改密码
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmDeleteAccount()">
+                        <i class="fas fa-user-times me-2"></i>删除账户
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据统计 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>数据统计
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number text-primary">{{ current_user.meal_logs|length }}</div>
+                            <small class="text-muted">饮食记录总数</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number text-success">{{ current_user.exercise_logs|length }}</div>
+                            <small class="text-muted">运动记录总数</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number text-warning">{{ current_user.goals|length }}</div>
+                            <small class="text-muted">设定目标数</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number text-info">{{ (current_user.created_at.timestamp() / 86400) | int }}</div>
+                            <small class="text-muted">使用天数</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                <h6 class="mb-3">最近活动</h6>
+                {% if current_user.meal_logs %}
+                <div class="mb-2">
+                    <small class="text-muted">最后饮食记录: {{ current_user.meal_logs[-1].meal_date.strftime('%Y-%m-%d') }}</small>
+                </div>
+                {% endif %}
+                {% if current_user.exercise_logs %}
+                <div class="mb-2">
+                    <small class="text-muted">最后运动记录: {{ current_user.exercise_logs[-1].exercise_date.strftime('%Y-%m-%d') }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 应用偏好设置 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-sliders-h me-2"></i>应用偏好
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h6 class="mb-3">单位设置</h6>
+                        <div class="mb-3">
+                            <label class="form-label">重量单位</label>
+                            <select class="form-select" id="weightUnit">
+                                <option value="kg">公斤 (kg)</option>
+                                <option value="lb">磅 (lb)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">身高单位</label>
+                            <select class="form-select" id="heightUnit">
+                                <option value="cm">厘米 (cm)</option>
+                                <option value="ft">英尺 (ft)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">温度单位</label>
+                            <select class="form-select" id="tempUnit">
+                                <option value="c">摄氏度 (°C)</option>
+                                <option value="f">华氏度 (°F)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="mb-3">默认设置</h6>
+                        <div class="mb-3">
+                            <label class="form-label">默认运动强度</label>
+                            <select class="form-select" id="defaultIntensity">
+                                <option value="low">低强度</option>
+                                <option value="medium">中等强度</option>
+                                <option value="high">高强度</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">每日卡路里目标</label>
+                            <input type="number" class="form-control" id="dailyCalories" placeholder="2000" min="1000" max="5000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">每日饮水目标 (L)</label>
+                            <input type="number" class="form-control" id="dailyWater" placeholder="2.5" min="1" max="10" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="notifications" checked>
+                            <label class="form-check-label" for="notifications">
+                                <i class="fas fa-bell me-2"></i>开启通知提醒
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="darkMode">
+                            <label class="form-check-label" for="darkMode">
+                                <i class="fas fa-moon me-2"></i>深色模式
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoSync" checked>
+                            <label class="form-check-label" for="autoSync">
+                                <i class="fas fa-sync me-2"></i>自动同步数据
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="button" class="btn btn-gradient" onclick="saveSettings()">
+                    <i class="fas fa-save me-2"></i>保存设置
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 数据管理 -->
+<div class="row mt-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-database me-2"></i>数据管理
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">管理您的个人数据和记录</p>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary" onclick="exportData()">
+                        <i class="fas fa-download me-2"></i>导出我的数据
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="importData()">
+                        <i class="fas fa-upload me-2"></i>导入数据
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" onclick="clearData()">
+                        <i class="fas fa-trash-alt me-2"></i>清空所有记录
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐私与安全 -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>隐私与安全
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="dataSharing">
+                        <label class="form-check-label" for="dataSharing">
+                            允许数据分析用于改进服务
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="marketingEmails">
+                        <label class="form-check-label" for="marketingEmails">
+                            接收产品更新和营销邮件
+                        </label>
+                    </div>
+                </div>
+                <hr>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-secondary" onclick="viewPrivacyPolicy()">
+                        <i class="fas fa-file-alt me-2"></i>查看隐私政策
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="viewTermsOfService()">
+                        <i class="fas fa-gavel me-2"></i>查看服务条款
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 关于应用 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333 !important;">
+                <h5 class="mb-0" style="color: #333 !important;">
+                    <i class="fas fa-info-circle me-2"></i>关于 FitLife
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <h6>FitLife - 智能健身饮食管理应用</h6>
+                        <p class="text-muted">版本 2.0.0</p>
+                        <p>FitLife 致力于为用户提供专业的健身饮食管理服务，通过 AI 智能分析帮助您更好地了解营养摄入，制定合理的健身计划，实现健康生活目标。</p>
+                        
+                        <div class="mt-3">
+                            <h6>新功能亮点:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>AI 智能食物分析</li>
+                                <li><i class="fas fa-check text-success me-2"></i>个性化营养建议</li>
+                                <li><i class="fas fa-check text-success me-2"></i>运动数据追踪</li>
+                                <li><i class="fas fa-check text-success me-2"></i>进度可视化分析</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-dumbbell fa-4x text-primary mb-3"></i>
+                            <div class="mb-3">
+                                <small class="text-muted">构建版本: 2025.01.08</small><br>
+                                <small class="text-muted">数据库版本: v2.0</small>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="checkUpdates()">
+                                    <i class="fas fa-sync me-1"></i>检查更新
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="contactSupport()">
+                                    <i class="fas fa-envelope me-1"></i>联系客服
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 加载保存的设置
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+});
+
+function loadSettings() {
+    // 从本地存储加载设置
+    const settings = JSON.parse(localStorage.getItem('fitlife_settings')) || {};
+    
+    if (settings.weightUnit) document.getElementById('weightUnit').value = settings.weightUnit;
+    if (settings.heightUnit) document.getElementById('heightUnit').value = settings.heightUnit;
+    if (settings.tempUnit) document.getElementById('tempUnit').value = settings.tempUnit;
+    if (settings.defaultIntensity) document.getElementById('defaultIntensity').value = settings.defaultIntensity;
+    if (settings.dailyCalories) document.getElementById('dailyCalories').value = settings.dailyCalories;
+    if (settings.dailyWater) document.getElementById('dailyWater').value = settings.dailyWater;
+    
+    if (settings.notifications !== undefined) document.getElementById('notifications').checked = settings.notifications;
+    if (settings.darkMode !== undefined) document.getElementById('darkMode').checked = settings.darkMode;
+    if (settings.autoSync !== undefined) document.getElementById('autoSync').checked = settings.autoSync;
+    if (settings.dataSharing !== undefined) document.getElementById('dataSharing').checked = settings.dataSharing;
+    if (settings.marketingEmails !== undefined) document.getElementById('marketingEmails').checked = settings.marketingEmails;
+}
+
+function saveSettings() {
+    const settings = {
+        weightUnit: document.getElementById('weightUnit').value,
+        heightUnit: document.getElementById('heightUnit').value,
+        tempUnit: document.getElementById('tempUnit').value,
+        defaultIntensity: document.getElementById('defaultIntensity').value,
+        dailyCalories: document.getElementById('dailyCalories').value,
+        dailyWater: document.getElementById('dailyWater').value,
+        notifications: document.getElementById('notifications').checked,
+        darkMode: document.getElementById('darkMode').checked,
+        autoSync: document.getElementById('autoSync').checked,
+        dataSharing: document.getElementById('dataSharing').checked,
+        marketingEmails: document.getElementById('marketingEmails').checked
+    };
+    
+    localStorage.setItem('fitlife_settings', JSON.stringify(settings));
+    
+    // 显示保存成功提示
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>设置已保存成功！
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
+}
+
+function changePassword() {
+    alert('密码修改功能将在后续版本中提供，请联系客服协助修改。');
+}
+
+function confirmDeleteAccount() {
+    if (confirm('确定要删除账户吗？此操作不可恢复，所有数据将被永久删除。')) {
+        alert('账户删除功能将在后续版本中提供，请联系客服协助处理。');
+    }
+}
+
+function exportData() {
+    // 模拟数据导出
+    const data = {
+        exportDate: new Date().toISOString(),
+        user: '{{ current_user.username }}',
+        mealLogs: {{ current_user.meal_logs|length }},
+        exerciseLogs: {{ current_user.exercise_logs|length }},
+        goals: {{ current_user.goals|length }}
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fitlife_data_export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importData() {
+    alert('数据导入功能将在后续版本中提供。');
+}
+
+function clearData() {
+    if (confirm('确定要清空所有记录吗？此操作不可恢复。')) {
+        alert('数据清理功能将在后续版本中提供，请联系客服协助处理。');
+    }
+}
+
+function viewPrivacyPolicy() {
+    window.open('/privacy-policy', '_blank');
+}
+
+function viewTermsOfService() {
+    window.open('/terms-of-service', '_blank');
+}
+
+function checkUpdates() {
+    // 模拟检查更新
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-info alert-dismissible fade show position-fixed';
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        <i class="fas fa-info-circle me-2"></i>您当前使用的已是最新版本！
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
+}
+
+function contactSupport() {
+    window.open('mailto:support@fitlife.com?subject=FitLife%20客服咨询', '_blank');
+}
+</script>
+{% endblock %}

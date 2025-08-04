@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}个人资料 - FitLife{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="dashboard-header mb-4">
+            <h2 class="h3 text-center mb-0">
+                <i class="fas fa-user-circle me-3 text-primary"></i>👤 个人资料
+            </h2>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 基本信息卡片 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-id-card me-2"></i>基本信息
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if current_user.profile %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ current_user.profile.height or '未设置' }}</div>
+                            <small class="text-muted">身高 (cm)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ current_user.profile.weight or '未设置' }}</div>
+                            <small class="text-muted">体重 (kg)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ current_user.profile.age or '未设置' }}</div>
+                            <small class="text-muted">年龄</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ current_user.profile.gender or '未设置' }}</div>
+                            <small class="text-muted">性别</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BMI计算 -->
+                {% if current_user.profile.height and current_user.profile.weight %}
+                <div class="mt-4">
+                    <h6 class="mb-3">健康指标</h6>
+                    {% set bmi = (current_user.profile.weight / ((current_user.profile.height / 100) ** 2)) | round(1) %}
+                    <div class="health-score-container text-center">
+                        <div class="health-score-circle">
+                            <div>
+                                <div class="health-score-value">{{ bmi }}</div>
+                                <div class="health-score-max">BMI</div>
+                            </div>
+                        </div>
+                        <div class="health-score-label">
+                            {% if bmi < 18.5 %}
+                                偏瘦
+                            {% elif bmi < 24 %}
+                                正常
+                            {% elif bmi < 28 %}
+                                过重
+                            {% else %}
+                                肥胖
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-user-plus fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">您还没有完善个人资料</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('profile_setup') }}" class="btn btn-gradient w-100">
+                    <i class="fas fa-edit me-2"></i>编辑资料
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 账户信息卡片 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-cog me-2"></i>账户信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted">用户名</label>
+                    <div class="form-control-plaintext">{{ current_user.username }}</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted">邮箱</label>
+                    <div class="form-control-plaintext">{{ current_user.email }}</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted">注册时间</label>
+                    <div class="form-control-plaintext">{{ current_user.created_at.strftime('%Y-%m-%d') }}</div>
+                </div>
+                
+                <!-- 使用统计 -->
+                <div class="mt-4">
+                    <h6 class="mb-3">使用统计</h6>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <div class="stat-card">
+                                <div class="stat-number text-primary">{{ current_user.meal_logs|length }}</div>
+                                <small class="text-muted">饮食记录</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card">
+                                <div class="stat-number text-success">{{ current_user.exercise_logs|length }}</div>
+                                <small class="text-muted">运动记录</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card">
+                                <div class="stat-number text-warning">{{ current_user.goals|length }}</div>
+                                <small class="text-muted">健身目标</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 健身目标部分 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-bullseye me-2"></i>当前健身目标
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if current_user.goals %}
+                <div class="row g-3">
+                    {% for goal in current_user.goals %}
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h6 class="text-primary">{{ goal.goal_type }}</h6>
+                            <div class="stat-number">{{ goal.target_value }}</div>
+                            <small class="text-muted">目标: {{ goal.target_date.strftime('%Y-%m-%d') if goal.target_date }}</small>
+                            <div class="mt-2">
+                                <div class="progress">
+                                    {% set progress = ((goal.current_value or 0) / goal.target_value * 100) if goal.target_value else 0 %}
+                                    <div class="progress-bar" style="width: {{ progress|min(100) }}%"></div>
+                                </div>
+                                <small class="text-muted">进度: {{ progress|round(1) }}%</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-target fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">您还没有设置健身目标</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('goal_setup') }}" class="btn btn-gradient w-100">
+                    <i class="fas fa-plus me-2"></i>设置目标
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快捷操作 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>快捷操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('meal_log_v2') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-utensils d-block mb-2"></i>
+                            饮食打卡
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('exercise_log') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-running d-block mb-2"></i>
+                            运动打卡
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('progress') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-chart-line d-block mb-2"></i>
+                            查看进度
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('settings') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-cog d-block mb-2"></i>
+                            应用设置
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
