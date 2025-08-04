@@ -793,10 +793,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 流式分析函数
     function startStreamingAnalysis(description) {
-        // 重置显示内容
-        document.getElementById('stream_foods').innerHTML = '<span class="typing-effect">🤖 正在使用Gemini-2.5-Flash分析食物...</span>';
-        document.getElementById('stream_highlights').innerHTML = '<span class="typing-effect">🔍 正在分析营养亮点...</span>';
-        document.getElementById('stream_concerns').innerHTML = '<span class="typing-effect">⚠️ 正在分析注意事项...</span>';
+        // 重置显示内容 - 使用正确的元素ID
+        const foodContainer = document.getElementById('stream_foods_emoji') || document.getElementById('stream_foods');
+        const highlightsContainer = document.getElementById('stream_highlights');
+        const suggestionsContainer = document.getElementById('stream_suggestions') || document.getElementById('stream_concerns');
+        
+        if (foodContainer) foodContainer.innerHTML = '<span class="typing-effect">🤖 正在使用Gemini-2.5-Flash分析食物...</span>';
+        if (highlightsContainer) highlightsContainer.innerHTML = '<span class="typing-effect">🔍 正在分析营养亮点...</span>';
+        if (suggestionsContainer) suggestionsContainer.innerHTML = '<span class="typing-effect">💡 正在生成饮食建议...</span>';
+        
+        // 设置30秒超时
+        const timeoutId = setTimeout(() => {
+            handleAnalysisError(new Error('分析超时，请稍后重试'));
+        }, 30000);
         
         // 调用升级后的AI API，包含餐次信息
         const mealType = document.getElementById('meal_type').value;
@@ -810,26 +819,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 meal_type: mealType
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            clearTimeout(timeoutId); // 清除超时
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                // 使用真实的AI分析结果
+                console.log('AI分析成功:', data.data);
                 displayRealAIResults(data.data);
             } else {
                 throw new Error(data.error || 'AI分析失败');
             }
         })
         .catch(error => {
+            clearTimeout(timeoutId); // 清除超时
             console.error('AI分析错误:', error);
-            // 显示错误信息
-            document.getElementById('stream_foods').innerHTML = '<span class="text-danger">❌ AI分析失败: ' + error.message + '</span>';
-            document.getElementById('stream_highlights').innerHTML = '<span class="text-muted">请检查网络连接或稍后重试</span>';
-            document.getElementById('stream_concerns').innerHTML = '<span class="text-muted">使用基本估算替代</span>';
-            
-            // 启用按钮
-            analyzeButton.disabled = false;
-            analyzeButton.innerHTML = '<i class="fas fa-magic me-2"></i>🤖 AI智能分析';
-            document.getElementById('analysisSpinner').style.display = 'none';
+            handleAnalysisError(error);
+        });
+    }
+    
+    // 统一的错误处理函数
+    function handleAnalysisError(error) {
+        const foodContainer = document.getElementById('stream_foods_emoji') || document.getElementById('stream_foods');
+        const highlightsContainer = document.getElementById('stream_highlights');
+        const suggestionsContainer = document.getElementById('stream_suggestions') || document.getElementById('stream_concerns');
+        
+        if (foodContainer) foodContainer.innerHTML = `<span class="text-danger">❌ AI分析失败: ${error.message}</span>`;
+        if (highlightsContainer) highlightsContainer.innerHTML = '<span class="text-muted">请检查网络连接或稍后重试</span>';
+        if (suggestionsContainer) suggestionsContainer.innerHTML = '<span class="text-muted">可以手动输入营养信息</span>';
+        
+        // 重置营养卡片为默认值
+        resetNutritionCards();
+        
+        // 启用按钮
+        analyzeButton.disabled = false;
+        analyzeButton.innerHTML = '<i class="fas fa-magic me-2"></i>🤖 AI智能分析';
+        document.getElementById('analysisSpinner').style.display = 'none';
+    }
+    
+    // 重置营养卡片
+    function resetNutritionCards() {
+        const elements = ['stream_calories', 'stream_protein', 'stream_carbs', 'stream_fat'];
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = '0';
         });
     }
     
@@ -880,6 +916,8 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = '<div class="fade-in">' + 
                 foodItems.map(item => `<span class="badge bg-primary me-2 mb-2">${item}</span>`).join('') + 
                 '</div>';
+        } else {
+            console.warn('找不到食物展示容器');
         }
     }
     

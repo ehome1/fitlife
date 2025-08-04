@@ -538,26 +538,26 @@ def analyze_food_with_ai(food_description, user_profile=None, meal_type="未指�
         # 解析JSON
         analysis_result = json.loads(json_text)
         
-        # 验证并设置默认值
+        # 验证并设置默认值 - 支持新格式
         result = {
+            # 基础营养数据
             'total_calories': int(analysis_result.get('total_calories', 300)),
             'total_protein': round(float(analysis_result.get('total_protein', 15)), 1),
             'total_carbs': round(float(analysis_result.get('total_carbs', 40)), 1),
             'total_fat': round(float(analysis_result.get('total_fat', 10)), 1),
-            'food_items': analysis_result.get('food_items', ['混合食物(估算)']),
-            'health_score': int(analysis_result.get('health_score', 6)),
-            'nutrition_balance': analysis_result.get('nutrition_balance', {
-                'protein_level': '适中',
-                'carbs_level': '适中', 
-                'fat_level': '适中',
-                'fiber_rich': False,
-                'vitamin_rich': False
-            }),
-            'health_highlights': analysis_result.get('health_highlights', ['提供基础能量']),
-            'health_concerns': analysis_result.get('health_concerns', ['注意营养均衡']),
-            'suggestions': analysis_result.get('suggestions', ['搭配蔬菜水果']),
-            'meal_type_suitable': analysis_result.get('meal_type_suitable', ['午餐', '晚餐']),
-            'analysis_note': analysis_result.get('analysis_note', 'AI分析完成')
+            
+            # 新格式数据
+            'food_items_with_emoji': analysis_result.get('food_items_with_emoji', analysis_result.get('food_items', ['🍽️ 混合食物(估算)'])),
+            'health_score': float(analysis_result.get('health_score', 6)),
+            'meal_suitability': analysis_result.get('meal_suitability', '适合用餐'),
+            'nutrition_highlights': analysis_result.get('nutrition_highlights', analysis_result.get('health_highlights', ['提供基础营养'])),
+            'dietary_suggestions': analysis_result.get('dietary_suggestions', analysis_result.get('suggestions', ['注意营养均衡'])),
+            'personalized_assessment': analysis_result.get('personalized_assessment', ''),
+            
+            # 兼容旧格式
+            'food_items': analysis_result.get('food_items_with_emoji', analysis_result.get('food_items', ['混合食物(估算)'])),
+            'health_highlights': analysis_result.get('nutrition_highlights', analysis_result.get('health_highlights', ['提供基础营养'])),
+            'suggestions': analysis_result.get('dietary_suggestions', analysis_result.get('suggestions', ['注意营养均衡'])),
         }
         
         # 缓存结果（限制缓存大小）
@@ -605,6 +605,16 @@ def test_ai_simple():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/quick-test')
+def quick_test():
+    """快速测试端点（无需登录）"""
+    return jsonify({
+        'status': 'ok',
+        'timestamp': str(datetime.now()),
+        'gemini_key_set': bool(os.getenv('GEMINI_API_KEY')),
+        'database_connected': True
+    })
 
 def analyze_exercise_with_ai(exercise_type, exercise_name, duration, user_profile):
     """使用Gemini AI分析运动，结合用户个人信息给出专业建议"""
