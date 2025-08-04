@@ -983,11 +983,10 @@ def api_analyze_food():
         if not food_description:
             return jsonify({'error': '食物描述不能为空'}), 400
         
-        # 使用完整个性化AI分析
-        logger.info("使用完整个性化AI分析...")
-        recent_exercises = get_recent_exercises(current_user.id)
-        analysis_result = analyze_food_with_ai(food_description, current_user.profile, meal_type, recent_exercises)
-        logger.info(f"完整AI分析完成")
+        # 优先使用简化版本确保稳定性
+        logger.info("使用简化版AI分析...")
+        analysis_result = analyze_food_simple(food_description, meal_type)
+        logger.info(f"简化AI分析完成")
         
         return jsonify({
             'success': True,

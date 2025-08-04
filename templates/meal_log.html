@@ -802,10 +802,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (highlightsContainer) highlightsContainer.innerHTML = '<span class="typing-effect">🔍 正在分析营养亮点...</span>';
         if (suggestionsContainer) suggestionsContainer.innerHTML = '<span class="typing-effect">💡 正在生成饮食建议...</span>';
         
-        // 设置30秒超时
+        // 设置60秒超时（AI分析需要更多时间）
         const timeoutId = setTimeout(() => {
             handleAnalysisError(new Error('分析超时，请稍后重试'));
-        }, 30000);
+        }, 60000);
         
         // 调用升级后的AI API，包含餐次信息
         const mealType = document.getElementById('meal_type').value;
