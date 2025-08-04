@@ -260,9 +260,8 @@ def logout():
 def health_check():
     """健康检查"""
     try:
-        # 测试数据库连接  
-        from sqlalchemy import text
-        db.session.execute(text('SELECT 1'))
+        # 测试数据库连接
+        db.session.execute('SELECT 1')
         return jsonify({
             'status': 'healthy',
             'mode': 'emergency',
