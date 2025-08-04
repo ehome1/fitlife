@@ -584,6 +584,28 @@ def analyze_food_with_ai(food_description, user_profile=None, meal_type="未指�
         # 抛出异常而不是返回默认值，这样可以看到真正的错误
         raise Exception(f"Gemini API调用失败: {str(e)}. 食物描述: {cleaned_description}")
 
+@app.route('/api/test-ai')
+@login_required  
+def test_ai_simple():
+    """简单的AI测试端点"""
+    try:
+        logger.info("=== 测试AI功能 ===")
+        
+        # 测试基本AI调用
+        test_result = analyze_food_with_ai("一碗白米饭")
+        
+        return jsonify({
+            'success': True,
+            'message': 'AI测试成功',
+            'data': test_result
+        })
+    except Exception as e:
+        logger.error(f"AI测试失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 def analyze_exercise_with_ai(exercise_type, exercise_name, duration, user_profile):
     """使用Gemini AI分析运动，结合用户个人信息给出专业建议"""
     # 生成缓存键（包含用户特征）
@@ -854,27 +876,38 @@ def meal_log():
 def api_analyze_food():
     """API端点：使用AI分析食物描述"""
     try:
+        logger.info("=== 开始AI食物分析 ===")
         data = request.get_json()
+        logger.info(f"接收到的数据: {data}")
+        
         # 支持两种字段格式：description 和 food_description
         food_description = data.get('description', data.get('food_description', '')).strip()
         meal_type = data.get('meal_type', '未指定')
+        
+        logger.info(f"食物描述: {food_description}")
+        logger.info(f"餐次类型: {meal_type}")
         
         if not food_description:
             return jsonify({'error': '食物描述不能为空'}), 400
         
         # 获取用户完整信息
         user_profile = current_user.profile
+        logger.info(f"用户档案: {user_profile is not None}")
+        
         recent_exercises = None
         if user_profile:
             recent_exercises = get_recent_exercises(current_user.id)
+            logger.info(f"最近运动: {recent_exercises}")
         
         # 调用升级后的AI分析函数
+        logger.info("调用AI分析函数...")
         analysis_result = analyze_food_with_ai(
             food_description, 
             user_profile, 
             meal_type, 
             recent_exercises
         )
+        logger.info(f"AI分析完成，结果: {type(analysis_result)}")
         
         return jsonify({
             'success': True,
