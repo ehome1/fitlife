@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}个人资料 - FitLife{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-center mb-4">
+                <i class="fas fa-user-circle me-3 text-primary"></i>个人资料
+            </h2>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- 基本信息 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">基本信息</h5>
+                </div>
+                <div class="card-body">
+                    {% if current_user.profile %}
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>身高:</strong></td>
+                            <td>{{ current_user.profile.height or '未设置' }} {% if current_user.profile.height %}cm{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>体重:</strong></td>
+                            <td>{{ current_user.profile.weight or '未设置' }} {% if current_user.profile.weight %}kg{% endif %}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>年龄:</strong></td>
+                            <td>{{ current_user.profile.age or '未设置' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>性别:</strong></td>
+                            <td>{{ current_user.profile.gender or '未设置' }}</td>
+                        </tr>
+                    </table>
+                    {% else %}
+                    <p class="text-center text-muted">请先完善个人资料</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('profile_setup') }}" class="btn btn-primary">编辑资料</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 账户信息 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">账户信息</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>用户名:</strong></td>
+                            <td>{{ current_user.username }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>邮箱:</strong></td>
+                            <td>{{ current_user.email }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>注册时间:</strong></td>
+                            <td>{{ current_user.created_at.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用统计 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">使用统计</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h3 class="text-primary">{{ current_user.meal_logs|length }}</h3>
+                            <p>饮食记录</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="text-success">{{ current_user.exercise_logs|length }}</h3>
+                            <p>运动记录</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="text-warning">{{ current_user.goals|length }}</h3>
+                            <p>健身目标</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">快捷操作</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('meal_log_v2') }}" class="btn btn-outline-primary w-100">饮食打卡</a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('exercise_log') }}" class="btn btn-outline-success w-100">运动打卡</a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('progress') }}" class="btn btn-outline-info w-100">查看进度</a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('settings') }}" class="btn btn-outline-warning w-100">应用设置</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}设置 - FitLife{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-center mb-4">
+                <i class="fas fa-cog me-3 text-primary"></i>应用设置
+            </h2>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- 账户设置 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">账户设置</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>用户名:</strong></td>
+                            <td>{{ current_user.username }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>邮箱:</strong></td>
+                            <td>{{ current_user.email }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>注册时间:</strong></td>
+                            <td>{{ current_user.created_at.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                    </table>
+                    <hr>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-warning" onclick="alert('功能开发中')">
+                            修改密码
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" onclick="alert('功能开发中')">
+                            删除账户
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据统计 -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">数据统计</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center g-3">
+                        <div class="col-6">
+                            <h4 class="text-primary">{{ current_user.meal_logs|length }}</h4>
+                            <small>饮食记录总数</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">{{ current_user.exercise_logs|length }}</h4>
+                            <small>运动记录总数</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">{{ current_user.goals|length }}</h4>
+                            <small>设定目标数</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-info">{{ current_user.created_at.strftime('%m/%d') }}</h4>
+                            <small>注册日期</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <h6 class="mb-3">最近活动</h6>
+                    {% if current_user.meal_logs|length > 0 %}
+                    <div class="mb-2">
+                        <small class="text-muted">最后饮食记录: 已有 {{ current_user.meal_logs|length }} 条记录</small>
+                    </div>
+                    {% endif %}
+                    {% if current_user.exercise_logs|length > 0 %}
+                    <div class="mb-2">
+                        <small class="text-muted">最后运动记录: 已有 {{ current_user.exercise_logs|length }} 条记录</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 应用偏好 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">应用偏好</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h6>单位设置</h6>
+                            <div class="mb-3">
+                                <label class="form-label">重量单位</label>
+                                <select class="form-select">
+                                    <option>公斤 (kg)</option>
+                                    <option>磅 (lb)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">身高单位</label>
+                                <select class="form-select">
+                                    <option>厘米 (cm)</option>
+                                    <option>英尺 (ft)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>默认设置</h6>
+                            <div class="mb-3">
+                                <label class="form-label">每日卡路里目标</label>
+                                <input type="number" class="form-control" placeholder="2000">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">每日饮水目标 (L)</label>
+                                <input type="number" class="form-control" placeholder="2.5" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" checked>
+                                <label class="form-check-label">开启通知提醒</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox">
+                                <label class="form-check-label">深色模式</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" checked>
+                                <label class="form-check-label">自动同步数据</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-primary" onclick="alert('设置已保存')">
+                        保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关于应用 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">关于 FitLife</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6>FitLife - 智能健身饮食管理应用</h6>
+                            <p class="text-muted">版本 2.0.0</p>
+                            <p>FitLife 致力于为用户提供专业的健身饮食管理服务，通过 AI 智能分析帮助您实现健康生活目标。</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <i class="fas fa-dumbbell fa-4x text-primary mb-3"></i>
+                            <div>
+                                <small class="text-muted">构建版本: 2025.01.08</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1572,12 +1572,34 @@ def progress():
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html')
+    try:
+        return render_template('profile_simple.html')
+    except Exception as e:
+        try:
+            # 如果简化模板也失败，返回基础HTML
+            return render_template('profile.html')
+        except:
+            return f"""
+            <h1>个人资料页面</h1>
+            <p>模板渲染出错: {str(e)}</p>
+            <p><a href="/dashboard">返回仪表盘</a></p>
+            """, 500
 
 @app.route('/settings')
 @login_required
 def settings():
-    return render_template('settings.html')
+    try:
+        return render_template('settings_simple.html')
+    except Exception as e:
+        try:
+            # 如果简化模板也失败，返回原版模板
+            return render_template('settings.html')
+        except:
+            return f"""
+            <h1>应用设置页面</h1>
+            <p>模板渲染出错: {str(e)}</p>
+            <p><a href="/dashboard">返回仪表盘</a></p>
+            """, 500
 
 @app.route('/health')
 def health_check():

@@ -158,15 +158,15 @@
                     {% for goal in current_user.goals %}
                     <div class="col-md-4">
                         <div class="stat-card">
-                            <h6 class="text-primary">{{ goal.goal_type }}</h6>
-                            <div class="stat-number">{{ goal.target_value }}</div>
+                            <h6 class="text-primary">{{ goal.goal_type_display }}</h6>
+                            <div class="stat-number">{% if goal.target_weight %}{{ goal.target_weight }} kg{% else %}{{ goal.goal_type_display }}{% endif %}</div>
                             <small class="text-muted">目标: {{ goal.target_date.strftime('%Y-%m-%d') if goal.target_date }}</small>
                             <div class="mt-2">
                                 <div class="progress">
-                                    {% set progress = ((goal.current_value or 0) / goal.target_value * 100) if goal.target_value else 0 %}
+                                    {% set progress = ((goal.current_weight or 0) / goal.target_weight * 100) if goal.target_weight and goal.target_weight > 0 else 0 %}
                                     <div class="progress-bar" style="width: {{ progress|min(100) }}%"></div>
                                 </div>
-                                <small class="text-muted">进度: {{ progress|round(1) }}%</small>
+                                <small class="text-muted">当前: {{ goal.current_weight or '未设置' }} kg</small>
                             </div>
                         </div>
                     </div>

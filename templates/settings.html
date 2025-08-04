@@ -80,8 +80,8 @@
                     </div>
                     <div class="col-6">
                         <div class="stat-card">
-                            <div class="stat-number text-info">{{ (current_user.created_at.timestamp() / 86400) | int }}</div>
-                            <small class="text-muted">使用天数</small>
+                            <div class="stat-number text-info">{{ current_user.created_at.strftime('%m/%d') }}</div>
+                            <small class="text-muted">注册日期</small>
                         </div>
                     </div>
                 </div>
@@ -90,12 +90,12 @@
                 <h6 class="mb-3">最近活动</h6>
                 {% if current_user.meal_logs %}
                 <div class="mb-2">
-                    <small class="text-muted">最后饮食记录: {{ current_user.meal_logs[-1].meal_date.strftime('%Y-%m-%d') }}</small>
+                    <small class="text-muted">最后饮食记录: {{ current_user.meal_logs[-1].date.strftime('%Y-%m-%d') }}</small>
                 </div>
                 {% endif %}
                 {% if current_user.exercise_logs %}
                 <div class="mb-2">
-                    <small class="text-muted">最后运动记录: {{ current_user.exercise_logs[-1].exercise_date.strftime('%Y-%m-%d') }}</small>
+                    <small class="text-muted">最后运动记录: {{ current_user.exercise_logs[-1].date.strftime('%Y-%m-%d') }}</small>
                 </div>
                 {% endif %}
             </div>
