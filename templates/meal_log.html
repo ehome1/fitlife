@@ -798,9 +798,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const highlightsContainer = document.getElementById('stream_highlights');
         const suggestionsContainer = document.getElementById('stream_suggestions') || document.getElementById('stream_concerns');
         
-        if (foodContainer) foodContainer.innerHTML = '<span class="typing-effect">🤖 正在使用Gemini-2.5-Flash分析食物...</span>';
-        if (highlightsContainer) highlightsContainer.innerHTML = '<span class="typing-effect">🔍 正在分析营养亮点...</span>';
-        if (suggestionsContainer) suggestionsContainer.innerHTML = '<span class="typing-effect">💡 正在生成饮食建议...</span>';
+        if (foodContainer) {
+            foodContainer.innerHTML = `
+            <div class="alert alert-info">
+                <h6>🚀 开始AI分析</h6>
+                <p><strong>食物:</strong> ${description}</p>
+                <p><strong>餐次:</strong> ${document.getElementById('meal_type').value}</p>
+                <p><strong>开始时间:</strong> ${new Date().toLocaleTimeString()}</p>
+                <p>🤖 正在调用Gemini-2.5-Flash...</p>
+            </div>`;
+        }
+        if (highlightsContainer) highlightsContainer.innerHTML = '<span class="typing-effect">🔍 准备分析营养亮点...</span>';
+        if (suggestionsContainer) suggestionsContainer.innerHTML = '<span class="typing-effect">💡 准备生成饮食建议...</span>';
         
         // 设置60秒超时（AI分析需要更多时间）
         const timeoutId = setTimeout(() => {
@@ -827,9 +836,24 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
+            console.log('API响应原始数据:', data);
+            
             if (data.success) {
                 console.log('AI分析成功:', data.data);
-                displayRealAIResults(data.data);
+                
+                // 显示成功信息
+                const foodContainer = document.getElementById('stream_foods_emoji') || document.getElementById('stream_foods');
+                if (foodContainer) {
+                    foodContainer.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6>✅ API调用成功!</h6>
+                        <p><strong>时间:</strong> ${new Date().toLocaleTimeString()}</p>
+                        <p>正在显示分析结果...</p>
+                    </div>`;
+                }
+                
+                // 立即显示简化结果，不使用复杂动画
+                setTimeout(() => displaySimpleAIResults(data.data), 1000);
             } else {
                 throw new Error(data.error || 'AI分析失败');
             }
@@ -837,6 +861,19 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             clearTimeout(timeoutId); // 清除超时
             console.error('AI分析错误:', error);
+            
+            // 显示详细错误信息到页面
+            const foodContainer = document.getElementById('stream_foods_emoji') || document.getElementById('stream_foods');
+            if (foodContainer) {
+                foodContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <h6>❌ 调试信息:</h6>
+                    <p><strong>错误:</strong> ${error.message}</p>
+                    <p><strong>时间:</strong> ${new Date().toLocaleTimeString()}</p>
+                    <p><strong>请检查:</strong> 网络连接、登录状态、控制台错误</p>
+                </div>`;
+            }
+            
             handleAnalysisError(error);
         });
     }
@@ -870,6 +907,74 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 升级版AI分析结果显示
+    // 简化版AI结果显示 - 直接显示，无动画
+    function displaySimpleAIResults(analysisData) {
+        console.log('简化显示AI分析数据:', analysisData);
+        
+        try {
+            // 立即显示所有结果
+            const foodContainer = document.getElementById('stream_foods_emoji') || document.getElementById('stream_foods');
+            const highlightsContainer = document.getElementById('stream_highlights');
+            const suggestionsContainer = document.getElementById('stream_suggestions') || document.getElementById('stream_concerns');
+            
+            // 显示食物识别
+            if (foodContainer) {
+                const foods = analysisData.food_items_with_emoji || analysisData.food_items || ['🍽️ 未识别食物'];
+                foodContainer.innerHTML = foods.join(', ');
+            }
+            
+            // 显示营养卡片
+            if (analysisData.total_calories) {
+                const caloriesEl = document.getElementById('stream_calories');
+                if (caloriesEl) caloriesEl.textContent = analysisData.total_calories;
+            }
+            if (analysisData.total_protein) {
+                const proteinEl = document.getElementById('stream_protein');
+                if (proteinEl) proteinEl.textContent = analysisData.total_protein;
+            }
+            if (analysisData.total_carbs) {
+                const carbsEl = document.getElementById('stream_carbs');
+                if (carbsEl) carbsEl.textContent = analysisData.total_carbs;
+            }
+            if (analysisData.total_fat) {
+                const fatEl = document.getElementById('stream_fat');
+                if (fatEl) fatEl.textContent = analysisData.total_fat;
+            }
+            
+            // 显示健康评分
+            const scoreEl = document.getElementById('stream_score');
+            if (scoreEl) scoreEl.textContent = analysisData.health_score || '7.0';
+            
+            // 显示营养亮点
+            if (highlightsContainer) {
+                const highlights = analysisData.nutrition_highlights || analysisData.health_highlights || ['提供基础营养'];
+                highlightsContainer.innerHTML = highlights.map(h => `<li>${h}</li>`).join('');
+            }
+            
+            // 显示建议
+            if (suggestionsContainer) {
+                const suggestions = analysisData.dietary_suggestions || analysisData.suggestions || ['保持均衡饮食'];
+                suggestionsContainer.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
+            }
+            
+            // 显示个性化评估
+            const assessmentEl = document.getElementById('stream_assessment');
+            if (assessmentEl && analysisData.personalized_assessment) {
+                assessmentEl.textContent = analysisData.personalized_assessment;
+            }
+            
+            console.log('简化AI结果显示完成');
+            
+        } catch (error) {
+            console.error('显示AI结果时出错:', error);
+            alert('显示结果时出错: ' + error.message);
+        }
+        
+        // 重新启用按钮
+        analyzeButton.disabled = false;
+        analyzeButton.innerHTML = '<i class="fas fa-magic me-2"></i>🤖 重新分析';
+    }
+
     function displayRealAIResults(analysisData) {
         console.log('AI分析数据:', analysisData); // 调试用
         
