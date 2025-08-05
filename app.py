@@ -2826,8 +2826,17 @@ def init_database_route():
 
 # Duplicate /health route removed - keeping the first definition only
 
-# 移除自动初始化，避免Vercel部署时的问题
-# if __name__ == '__main__':
-#     with app.app_context():
-#         init_database()
-#     app.run(debug=True)
+# Vercel环境下的初始化
+if os.getenv('VERCEL'):
+    with app.app_context():
+        try:
+            init_database()
+            print("✅ Vercel环境数据库初始化成功")
+        except Exception as e:
+            print(f"⚠️ Vercel环境数据库初始化失败: {e}")
+
+# 本地开发环境初始化
+if __name__ == '__main__':
+    with app.app_context():
+        init_database()
+    app.run(debug=True, host='0.0.0.0', port=5001)
