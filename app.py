@@ -124,7 +124,8 @@ class FitnessGoal(db.Model):
 class ExerciseLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    exercise_date = db.Column(db.Date, nullable=False)
+    # exercise_date字段在生产环境不存在，暂时注释
+    # exercise_date = db.Column(db.Date, nullable=False)
     exercise_type = db.Column(db.String(50), nullable=False)
     exercise_name = db.Column(db.String(100), nullable=False)
     duration = db.Column(db.Integer, nullable=False)  # 分钟
@@ -132,6 +133,13 @@ class ExerciseLog(db.Model):
     intensity = db.Column(db.String(20))
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    @property
+    def exercise_date(self):
+        """兼容性属性 - 从created_at提取日期"""
+        if self.created_at:
+            return self.created_at.date()
+        return datetime.now(timezone.utc).date()
     
     @property
     def exercise_type_display(self):
@@ -259,11 +267,12 @@ def dashboard():
             is_active=True
         ).first()
         
-        # 获取今日运动记录
+        # 获取今日运动记录（使用created_at字段兼容生产环境）
         today = datetime.now(timezone.utc).date()
-        today_exercises = ExerciseLog.query.filter_by(
-            user_id=current_user.id,
-            exercise_date=today
+        from sqlalchemy import func
+        today_exercises = ExerciseLog.query.filter(
+            ExerciseLog.user_id == current_user.id,
+            func.date(ExerciseLog.created_at) == today
         ).all()
         
         # 计算今日消耗热量
@@ -341,11 +350,13 @@ def exercise_log():
         duration = int(request.form['duration'])
         notes = request.form.get('notes', '')
         
-        # 解析日期
+        # 解析日期并转换为datetime（兼容生产环境）
         try:
             exercise_date = datetime.strptime(exercise_date_str, '%Y-%m-%d').date()
+            # 将日期转换为该日期的datetime（用于created_at字段）
+            exercise_datetime = datetime.combine(exercise_date, datetime.min.time()).replace(tzinfo=timezone.utc)
         except ValueError:
-            exercise_date = datetime.now().date()
+            exercise_datetime = datetime.now(timezone.utc)
         
         # 估算消耗的卡路里（简化版本）
         profile = current_user.profile
@@ -358,7 +369,8 @@ def exercise_log():
         
         exercise_log = ExerciseLog(
             user_id=current_user.id,
-            exercise_date=exercise_date,
+            # 不再使用exercise_date字段，使用created_at存储用户指定的日期
+            created_at=exercise_datetime,
             exercise_type=exercise_type,
             exercise_name=exercise_name,
             duration=duration,
