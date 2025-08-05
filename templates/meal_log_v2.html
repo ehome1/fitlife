@@ -846,13 +846,121 @@ function displayAnalysisResults(result) {
     document.getElementById('analysisLoading').style.display = 'none';
     document.getElementById('analysisResults').style.display = 'block';
     
-    // 显示分析结果在右侧面板
+    // 在左侧向导显示简要分析结果
+    const leftAnalysisArea = document.getElementById('analysisResults');
+    leftAnalysisArea.innerHTML = generateLeftAnalysisHTML(result);
+    
+    // 显示详细分析结果在右侧面板
     const displayArea = document.getElementById('currentAnalysisDisplay');
     displayArea.innerHTML = generateAnalysisResultHTML(result);
     
     // 生成确认预览
     const summaryPreview = document.getElementById('summaryPreview');
     summaryPreview.innerHTML = generateSummaryPreviewHTML(result);
+}
+
+function generateLeftAnalysisHTML(result) {
+    // 为左侧向导生成简要的分析结果
+    const calories = result.total_calories || 0;
+    const protein = result.total_protein || 0;
+    const carbs = result.total_carbs || 0;
+    const fat = result.total_fat || 0;
+    const healthScore = result.health_score || 0;
+    
+    return `
+        <div class="wizard-analysis-summary">
+            <div class="analysis-complete-header text-center mb-3">
+                <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                <h5 class="text-success">AI分析完成！</h5>
+                <span class="badge bg-success">健康评分: ${healthScore}/10</span>
+            </div>
+            
+            <div class="nutrition-summary-cards">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="mini-summary-card">
+                            <div class="card-value">${calories}</div>
+                            <div class="card-label">热量 (kcal)</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mini-summary-card">
+                            <div class="card-value">${protein}</div>
+                            <div class="card-label">蛋白质 (g)</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mini-summary-card">
+                            <div class="card-value">${carbs}</div>
+                            <div class="card-label">碳水 (g)</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mini-summary-card">
+                            <div class="card-value">${fat}</div>
+                            <div class="card-label">脂肪 (g)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="analysis-note text-center mt-3">
+                <small class="text-muted">
+                    <i class="fas fa-arrow-right me-1"></i>
+                    详细分析结果请查看右侧 →
+                </small>
+            </div>
+        </div>
+        
+        <style>
+        .wizard-analysis-summary {
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            border: 2px solid #28a745;
+        }
+        
+        .mini-summary-card {
+            background: white;
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .mini-summary-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .mini-summary-card .card-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 4px;
+        }
+        
+        .mini-summary-card .card-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+        
+        .analysis-complete-header {
+            animation: fadeInUp 0.5s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        </style>
+    `;
 }
 
 function generateAnalysisResultHTML(result) {
