@@ -93,7 +93,13 @@ class UserProfile(db.Model):
     gender = db.Column(db.String(10))  # male, female
     activity_level = db.Column(db.String(20))  # sedentary, lightly_active, moderately_active, very_active
     bmr = db.Column(db.Float)  # 基础代谢率
-    fitness_goals = db.Column(db.String(100))  # lose_weight, maintain_weight, gain_weight, build_muscle
+    # fitness_goals字段在生产环境不存在，暂时注释
+    # fitness_goals = db.Column(db.String(100))  # lose_weight, maintain_weight, gain_weight, build_muscle
+    
+    @property
+    def fitness_goals(self):
+        """兼容性属性 - 返回默认值"""
+        return 'maintain_weight'
 
 class FitnessGoal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -288,7 +294,7 @@ def profile_setup():
         age = int(request.form['age'])
         gender = request.form['gender']
         activity_level = request.form['activity_level']
-        fitness_goals = request.form['fitness_goals']
+        # fitness_goals = request.form.get('fitness_goals', 'maintain_weight')  # 暂不保存到数据库
         
         # 计算BMR
         if gender == 'male':
@@ -296,7 +302,7 @@ def profile_setup():
         else:
             bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
         
-        # 创建或更新用户资料
+        # 创建或更新用户资料（不包含fitness_goals字段）
         profile = current_user.profile
         if profile:
             profile.height = height
@@ -305,7 +311,7 @@ def profile_setup():
             profile.gender = gender
             profile.activity_level = activity_level
             profile.bmr = bmr
-            profile.fitness_goals = fitness_goals
+            # 不设置 fitness_goals 字段
         else:
             profile = UserProfile(
                 user_id=current_user.id,
@@ -314,8 +320,8 @@ def profile_setup():
                 age=age,
                 gender=gender,
                 activity_level=activity_level,
-                bmr=bmr,
-                fitness_goals=fitness_goals
+                bmr=bmr
+                # 不包含 fitness_goals 字段
             )
             db.session.add(profile)
         
