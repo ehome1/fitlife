@@ -83,6 +83,7 @@ class User(UserMixin, db.Model):
     profile = db.relationship('UserProfile', backref='user', uselist=False, cascade='all, delete-orphan')
     goals = db.relationship('FitnessGoal', backref='user', cascade='all, delete-orphan')
     exercise_logs = db.relationship('ExerciseLog', backref='user', cascade='all, delete-orphan')
+    meal_logs = db.relationship('MealLog', backref='user', cascade='all, delete-orphan')
 
 class UserProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -164,7 +165,54 @@ class ExerciseLog(db.Model):
         }
         return intensity_map.get(self.intensity, self.intensity)
 
-# 饮食记录相关模型和功能已删除
+class MealLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    meal_date = db.Column(db.Date, nullable=False)
+    meal_type = db.Column(db.String(20), nullable=False)  # breakfast, lunch, dinner, snack
+    food_items = db.Column(db.JSON, nullable=False)  # 食物列表 [{"name": "苹果", "amount": 1, "unit": "个"}]
+    total_calories = db.Column(db.Integer)
+    analysis_result = db.Column(db.JSON)  # AI分析结果
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    @property
+    def meal_type_display(self):
+        type_map = {
+            'breakfast': '早餐',
+            'lunch': '午餐', 
+            'dinner': '晚餐',
+            'snack': '加餐'
+        }
+        return type_map.get(self.meal_type, self.meal_type)
+    
+    @property
+    def food_items_summary(self):
+        """生成食物摘要，用于历史记录显示"""
+        if not self.food_items:
+            return "无记录"
+        
+        food_names = [item.get('name', '') for item in self.food_items[:3]]  # 只显示前3个
+        summary = '、'.join(food_names)
+        
+        if len(self.food_items) > 3:
+            summary += f"等{len(self.food_items)}样"
+        
+        return summary
+    
+    @property 
+    def date_display(self):
+        """格式化日期显示"""
+        if self.meal_date:
+            return self.meal_date.strftime('%m-%d')
+        return self.created_at.strftime('%m-%d')
+    
+    @property
+    def meal_score(self):
+        """获取膳食评分 (10分制)"""
+        if self.analysis_result and 'meal_analysis' in self.analysis_result:
+            return self.analysis_result['meal_analysis'].get('meal_score', 0)
+        return 0
 
 # 后台管理系统数据模型
 class AdminUser(UserMixin, db.Model):
@@ -391,6 +439,62 @@ def exercise_log():
     ).order_by(ExerciseLog.created_at.desc()).limit(10).all()
     
     return render_template('exercise_log.html', recent_exercises=recent_exercises)
+
+@app.route('/meal-log', methods=['GET', 'POST'])
+@login_required
+def meal_log():
+    """饮食记录页面"""
+    if request.method == 'POST':
+        meal_date_str = request.form['meal_date']
+        meal_type = request.form['meal_type']
+        notes = request.form.get('notes', '')
+        
+        # 解析日期
+        try:
+            meal_date = datetime.strptime(meal_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            meal_date = datetime.now(timezone.utc).date()
+        
+        # 处理食物列表数据
+        food_items = []
+        food_names = request.form.getlist('food_name[]')
+        food_amounts = request.form.getlist('food_amount[]')
+        food_units = request.form.getlist('food_unit[]')
+        
+        for i in range(len(food_names)):
+            if food_names[i].strip():  # 只添加非空的食物项
+                food_items.append({
+                    'name': food_names[i].strip(),
+                    'amount': float(food_amounts[i]) if food_amounts[i] else 1,
+                    'unit': food_units[i]
+                })
+        
+        if not food_items:
+            flash('请至少添加一种食物！')
+            return redirect(url_for('meal_log'))
+        
+        # 创建饮食记录（暂时不计算卡路里，等AI分析后更新）
+        meal_log_entry = MealLog(
+            user_id=current_user.id,
+            meal_date=meal_date,
+            meal_type=meal_type,
+            food_items=food_items,
+            total_calories=0,  # 初始值，AI分析后更新
+            notes=notes
+        )
+        
+        db.session.add(meal_log_entry)
+        db.session.commit()
+        
+        flash('饮食记录已保存！建议使用AI分析获取详细营养信息')
+        return redirect(url_for('meal_log'))
+    
+    # 获取最近的饮食记录
+    recent_meals = MealLog.query.filter_by(
+        user_id=current_user.id
+    ).order_by(MealLog.created_at.desc()).limit(10).all()
+    
+    return render_template('meal_log.html', recent_meals=recent_meals)
 
 def estimate_calories_burned(exercise_type, exercise_name, duration, weight):
     """估算消耗的卡路里"""
@@ -717,6 +821,210 @@ def get_health_alerts(intensity, duration, age):
         alerts.append('高强度长时间运动，建议专业指导')
     
     return alerts
+
+@app.route('/api/analyze-meal', methods=['POST'])
+@login_required
+def analyze_meal():
+    """AI营养分析API端点"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '无效的请求数据'}), 400
+        
+        meal_type = data.get('meal_type')
+        food_items = data.get('food_items', [])
+        
+        if not meal_type or not food_items:
+            return jsonify({'error': '缺少必要的饮食信息'}), 400
+        
+        # 获取用户资料
+        user_profile = getattr(current_user, 'profile', None)
+        if not user_profile:
+            weight = 70
+            height = 170
+            age = 30
+            gender = '未知'
+            fitness_goal = 'maintain_weight'
+        else:
+            weight = user_profile.weight or 70
+            height = user_profile.height or 170
+            age = user_profile.age or 30
+            gender = user_profile.gender or '未知'
+            fitness_goal = getattr(user_profile, 'fitness_goals', 'maintain_weight')
+        
+        # 调用Gemini AI进行营养分析
+        analysis_result = call_gemini_meal_analysis(meal_type, food_items, {
+            'age': age,
+            'gender': gender,
+            'weight': weight,
+            'height': height,
+            'fitness_goal': fitness_goal
+        })
+        
+        return jsonify({
+            'success': True,
+            'data': analysis_result
+        })
+        
+    except Exception as e:
+        import traceback
+        error_msg = f"营养分析错误: {str(e)}"
+        error_trace = traceback.format_exc()
+        print(f"{error_msg}\n{error_trace}")
+        return jsonify({
+            'success': False,
+            'error': '分析过程中出现错误',
+            'details': str(e) if app.debug else None
+        }), 500
+
+def call_gemini_meal_analysis(meal_type, food_items, user_info):
+    """调用Gemini API进行营养分析"""
+    try:
+        import google.generativeai as genai
+        
+        # 配置Gemini API
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise Exception("Gemini API Key未配置")
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # 构建food_items字符串
+        food_list_str = '\n'.join([
+            f"- {item['name']} {item['amount']}{item['unit']}" 
+            for item in food_items
+        ])
+        
+        # 餐次类型映射
+        meal_type_map = {
+            'breakfast': '早餐',
+            'lunch': '午餐',
+            'dinner': '晚餐', 
+            'snack': '加餐'
+        }
+        meal_type_cn = meal_type_map.get(meal_type, meal_type)
+        
+        # 构建详细的营养分析prompt
+        prompt = f"""
+作为专业营养师，请分析以下饮食信息并返回详细的营养分析结果。
+
+用户信息：
+- 年龄：{user_info['age']}岁
+- 性别：{user_info['gender']}
+- 体重：{user_info['weight']}kg
+- 身高：{user_info['height']}cm
+- 健身目标：{user_info['fitness_goal']}
+
+饮食信息：
+- 餐次：{meal_type_cn}
+- 食物列表：
+{food_list_str}
+
+请按照以下JSON格式返回营养分析结果（只返回JSON，不要其他文字）：
+
+{{
+    "basic_nutrition": {{
+        "total_calories": 数值,
+        "protein": 数值,
+        "carbohydrates": 数值, 
+        "fat": 数值,
+        "fiber": 数值,
+        "sugar": 数值
+    }},
+    "nutrition_breakdown": {{
+        "protein_percentage": 数值,
+        "carbs_percentage": 数值,
+        "fat_percentage": 数值
+    }},
+    "meal_analysis": {{
+        "meal_score": 数值,
+        "balance_rating": "营养均衡评价",
+        "meal_type_suitability": "对该餐次的适合度评价",
+        "portion_assessment": "分量评估"
+    }},
+    "detailed_analysis": {{
+        "strengths": ["营养优点列表"],
+        "areas_for_improvement": ["改进建议列表"]
+    }},
+    "personalized_feedback": {{
+        "calorie_assessment": "热量评估",
+        "macro_balance": "三大营养素平衡评价",
+        "health_impact": "健康影响评估"
+    }},
+    "recommendations": {{
+        "next_meal_suggestion": "下一餐建议",
+        "daily_nutrition_tip": "今日营养贴士",
+        "hydration_reminder": "补水提醒"
+    }},
+    "motivation_message": "激励话语"
+}}
+
+请基于营养学专业知识进行准确分析，确保数据真实可靠。
+"""
+        
+        # 调用Gemini API
+        response = model.generate_content(prompt)
+        
+        # 解析JSON响应
+        import json
+        result_text = response.text.strip()
+        
+        # 清理响应文本，移除可能的markdown标记
+        if result_text.startswith('```json'):
+            result_text = result_text[7:]
+        if result_text.endswith('```'):
+            result_text = result_text[:-3]
+        
+        result = json.loads(result_text)
+        return result
+        
+    except Exception as e:
+        print(f"Gemini API调用错误: {e}")
+        # 返回模拟数据作为fallback
+        return generate_fallback_nutrition_analysis(food_items, meal_type)
+
+def generate_fallback_nutrition_analysis(food_items, meal_type):
+    """生成模拟营养分析数据"""
+    # 简单的热量估算
+    estimated_calories = len(food_items) * 150  # 每个食物项平均150kcal
+    
+    return {
+        "basic_nutrition": {
+            "total_calories": estimated_calories,
+            "protein": round(estimated_calories * 0.15 / 4),  # 15%的热量来自蛋白质
+            "carbohydrates": round(estimated_calories * 0.55 / 4),  # 55%来自碳水
+            "fat": round(estimated_calories * 0.30 / 9),  # 30%来自脂肪
+            "fiber": 5,
+            "sugar": 15
+        },
+        "nutrition_breakdown": {
+            "protein_percentage": 15,
+            "carbs_percentage": 55,
+            "fat_percentage": 30
+        },
+        "meal_analysis": {
+            "meal_score": 7.5,
+            "balance_rating": "营养较均衡",
+            "meal_type_suitability": "适合当前餐次",
+            "portion_assessment": "分量适中"
+        },
+        "detailed_analysis": {
+            "strengths": ["食物搭配丰富", "营养相对均衡"],
+            "areas_for_improvement": ["建议增加蔬菜摄入", "注意食物新鲜度"]
+        },
+        "personalized_feedback": {
+            "calorie_assessment": "热量适中，符合需求",
+            "macro_balance": "三大营养素比例合理",
+            "health_impact": "整体健康，营养价值良好"
+        },
+        "recommendations": {
+            "next_meal_suggestion": "下一餐建议增加蔬菜",
+            "daily_nutrition_tip": "保持多样化饮食",
+            "hydration_reminder": "记得补充水分"
+        },
+        "motivation_message": "营养搭配不错，继续保持健康饮食习惯！"
+    }
 
 def init_database():
     """初始化数据库函数"""

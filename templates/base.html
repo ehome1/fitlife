@@ -354,6 +354,28 @@
             height: 300px;
             margin: 20px 0;
         }
+        
+        /* 饮食记录分析样式 */
+        .meal-analysis-results .card {
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .meal-score-display {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .meal-score-display .score-value {
+            font-size: inherit;
+        }
+        
+        .meal-score-display .score-max {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -381,9 +403,9 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <span class="nav-link disabled text-muted">
+                        <a class="nav-link" href="{{ url_for('meal_log') }}">
                             <i class="fas fa-utensils me-1"></i>饮食记录
-                        </span>
+                        </a>
                     </li>
                     <li class="nav-item">
                         <span class="nav-link disabled text-muted">
