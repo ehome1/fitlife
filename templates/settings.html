@@ -62,7 +62,7 @@
                 <div class="row g-3">
                     <div class="col-6">
                         <div class="stat-card">
-                            <div class="stat-number text-primary">{{ current_user.meal_logs|length }}</div>
+                            <div class="stat-number text-primary">0</div>
                             <small class="text-muted">饮食记录总数</small>
                         </div>
                     </div>
@@ -386,7 +386,7 @@ function exportData() {
     const data = {
         exportDate: new Date().toISOString(),
         user: '{{ current_user.username }}',
-        mealLogs: {{ current_user.meal_logs|length }},
+        mealLogs: 0,
         exerciseLogs: {{ current_user.exercise_logs|length }},
         goals: {{ current_user.goals|length }}
     };

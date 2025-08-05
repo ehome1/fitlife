@@ -85,7 +85,7 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-md-4">
-                            <h3 class="text-primary">{{ current_user.meal_logs|length }}</h3>
+                            <h3 class="text-primary">0</h3>
                             <p>饮食记录</p>
                         </div>
                         <div class="col-md-4">
@@ -112,7 +112,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3 mb-2">
-                            <a href="{{ url_for('meal_log_v2') }}" class="btn btn-outline-primary w-100">饮食打卡</a>
+                            <span class="btn btn-outline-secondary w-100 disabled">饮食打卡</span>
                         </div>
                         <div class="col-md-3 mb-2">
                             <a href="{{ url_for('exercise_log') }}" class="btn btn-outline-success w-100">运动打卡</a>

@@ -120,7 +120,7 @@
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="stat-card">
-                                <div class="stat-number text-primary">{{ current_user.meal_logs|length }}</div>
+                                <div class="stat-number text-muted">0</div>
                                 <small class="text-muted">饮食记录</small>
                             </div>
                         </div>
@@ -200,10 +200,10 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <a href="{{ url_for('meal_log_v2') }}" class="btn btn-outline-primary w-100">
+                        <span class="btn btn-outline-secondary w-100 disabled">
                             <i class="fas fa-utensils d-block mb-2"></i>
                             饮食打卡
-                        </a>
+                        </span>
                     </div>
                     <div class="col-md-3">
                         <a href="{{ url_for('exercise_log') }}" class="btn btn-outline-success w-100">
