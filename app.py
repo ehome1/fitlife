@@ -526,29 +526,33 @@ class FoodAnalyzer:
         }
     
     def analyze_comprehensive(self, food_description, user_profile=None, meal_type="未指定"):
-        """综合分析 - 使用AI + 本地数据库"""
-        logger.info(f"开始综合分析: {food_description}")
+        """简化分析 - 直接使用AI结果"""
+        logger.info(f"开始AI分析: {food_description}")
         
         try:
-            # 1. 使用AI识别食物
+            # 直接使用AI分析，不再进行复杂的增强处理
             ai_result = self._call_ai_analysis(food_description, user_profile, meal_type)
-            logger.info(f"AI分析结果: {ai_result}")
+            logger.info(f"AI分析成功: {ai_result}")
             
-            # 2. 本地数据库验证和补充
-            enhanced_result = self._enhance_with_local_db(ai_result, food_description)
-            logger.info(f"数据库增强结果: {enhanced_result}")
+            # 确保基本字段存在
+            defaults = {
+                'food_items_with_emoji': ai_result.get('food_items_with_emoji', [f'🍽️ {food_description}']),
+                'total_calories': int(ai_result.get('total_calories', 0)),
+                'total_protein': float(ai_result.get('total_protein', 0)),
+                'total_carbs': float(ai_result.get('total_carbs', 0)),
+                'total_fat': float(ai_result.get('total_fat', 0)),
+                'health_score': int(ai_result.get('health_score', 7)),
+                'meal_suitability': f'适合{meal_type}',
+                'personalized_assessment': '基于AI分析的营养评估结果'
+            }
             
-            # 3. 生成个性化建议
-            personalized_result = self._add_personalization(enhanced_result, user_profile, meal_type)
-            logger.info(f"个性化结果: {personalized_result}")
-            
-            # 4. 确保关键数据有值
-            personalized_result = self._ensure_valid_result(personalized_result, food_description, meal_type)
-            
-            return personalized_result
+            # 合并AI结果和默认值
+            result = {**defaults, **ai_result}
+            logger.info(f"最终结果: {result}")
+            return result
             
         except Exception as e:
-            logger.error(f"综合分析失败: {str(e)}")
+            logger.error(f"AI分析失败: {str(e)}")
             logger.info("使用兜底结果")
             return self._generate_fallback_result(food_description, meal_type)
     
@@ -2149,8 +2153,30 @@ def create_default_prompts():
         food_content = """作为一名专业的营养师和健康顾问，请深入分析以下食物描述，提供详细的营养信息和健康评估。请以JSON格式返回结果，不要包含其他文字。
 
 食物描述：{food_description}
+餐次：{meal_type}
+用户信息：{user_info}
 
-请按照JSON格式返回详细的营养分析结果。"""
+请按照以下JSON格式返回详细分析结果：
+{{
+    "food_items_with_emoji": ["🍎 苹果", "🥛 牛奶"],
+    "total_calories": 数字（总热量）,
+    "total_protein": 数字（总蛋白质g）,
+    "total_carbs": 数字（总碳水化合物g）,
+    "total_fat": 数字（总脂肪g）,
+    "total_fiber": 数字（总膳食纤维g）,
+    "total_sodium": 数字（总钠mg）,
+    "health_score": 数字（健康评分1-10）,
+    "meal_suitability": "适合度评估",
+    "nutrition_highlights": ["营养亮点1", "营养亮点2"],
+    "dietary_suggestions": ["饮食建议1", "饮食建议2"]
+}}
+
+分析要求：
+1. 识别具体食物并用emoji标注
+2. 准确计算各项营养成分
+3. 基于营养密度给出健康评分
+4. 评估与指定餐次的适合度
+5. 提供个性化营养建议"""
         
         food_prompt = PromptTemplate(
             name='默认饮食分析模板',

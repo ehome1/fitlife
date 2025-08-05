@@ -846,17 +846,11 @@ function displayAnalysisResults(result) {
     document.getElementById('analysisLoading').style.display = 'none';
     document.getElementById('analysisResults').style.display = 'block';
     
-    // 左侧向导显示简单的完成提示
+    // 左侧向导区域完全空白（按照用户ASCII图要求）
     const leftAnalysisArea = document.getElementById('analysisResults');
-    leftAnalysisArea.innerHTML = `
-        <div class="text-center py-4">
-            <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
-            <h5 class="text-success">分析完成！</h5>
-            <p class="text-muted">详细结果请查看右侧面板 →</p>
-        </div>
-    `;
+    leftAnalysisArea.innerHTML = '<div class="text-center py-4"><p class="text-muted">分析完成，结果已显示在右侧面板</p></div>';
     
-    // 将所有分析结果显示在右侧面板
+    // 将所有分析结果显示在右侧面板（红框2位置）
     const displayArea = document.getElementById('currentAnalysisDisplay');
     displayArea.innerHTML = generateAnalysisResultHTML(result);
     
