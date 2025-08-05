@@ -184,6 +184,9 @@ class MealLog(db.Model):
     fat = db.Column(db.Float)
     quantity = db.Column(db.Float)
     
+    # ===== 新增：AI分析结果存储 =====
+    analysis_result = db.Column(db.JSON)  # 存储完整的AI分析结果
+    
     # ===== v2字段 - 暂时移除以避免生产环境错误 =====
     # 在数据库架构升级后再启用这些字段：
     # food_description = db.Column(db.Text)
@@ -280,8 +283,14 @@ class MealLog(db.Model):
         return result
     
     def get_personalized_assessment(self):
-        """安全获取个性化评估"""
-        # 生成默认评估
+        """获取个性化评估"""
+        # 优先使用AI分析结果中的个性化评估
+        if self.analysis_result and isinstance(self.analysis_result, dict):
+            ai_assessment = self.analysis_result.get('personalized_assessment')
+            if ai_assessment:
+                return ai_assessment
+        
+        # 兜底：基于热量的简单评估
         calories = self.get_total_calories()
         if calories < 200:
             return '热量较低，适合减脂期间食用'
@@ -632,33 +641,105 @@ class FoodAnalyzer:
         return 1.0
     
     def _add_personalization(self, result, user_profile, meal_type):
-        """添加个性化建议"""
+        """添加增强的个性化建议"""
         if not user_profile:
+            # 如果没有用户资料，使用通用评估
+            calories = result.get('total_calories', 0)
+            if calories < 200:
+                result['personalized_assessment'] = '热量较低，适合控制体重时食用，建议搭配适量运动。'
+            elif calories > 600:
+                result['personalized_assessment'] = '热量较高，建议分餐食用或搭配高强度运动消耗。'
+            else:
+                result['personalized_assessment'] = '热量适中，营养搭配较为均衡，符合一般健康饮食标准。'
             return result
         
-        # 根据用户信息调整建议
+        # 获取用户信息
         age = user_profile.age or 25
         weight = user_profile.weight or 70
+        height = user_profile.height or 170
+        gender = user_profile.gender or 'male'
         activity_level = user_profile.activity_level or 'moderately_active'
         
-        # 个性化评估
+        # 计算精确的BMR和TDEE
+        bmr = self._calculate_bmr(age, weight, height, gender)
+        tdee = self._calculate_tdee(bmr, activity_level)
+        
+        # 餐次热量分配
+        meal_ratios = {
+            'breakfast': 0.25,
+            'lunch': 0.35, 
+            'dinner': 0.30,
+            'snack': 0.10
+        }
+        meal_ratio = meal_ratios.get(meal_type, 0.25)
+        expected_calories = tdee * meal_ratio
+        
+        # 营养素分析
         calories = result.get('total_calories', 0)
-        daily_needs = self._calculate_daily_needs(age, weight, activity_level)
-        meal_ratio = 0.3 if meal_type == 'breakfast' else 0.4 if meal_type == 'lunch' else 0.3
-        expected_calories = daily_needs * meal_ratio
+        protein = result.get('total_protein', 0)
+        carbs = result.get('total_carbs', 0)
+        fat = result.get('total_fat', 0)
         
-        if calories > expected_calories * 1.2:
-            assessment = f"这餐热量({calories}kcal)略高于建议的{meal_type}摄入量({expected_calories:.0f}kcal)，建议适当减少分量或增加运动。"
-        elif calories < expected_calories * 0.8:
-            assessment = f"这餐热量({calories}kcal)偏低，可以适当增加营养密度高的食物。"
+        # 计算营养素比例
+        total_macros = protein * 4 + carbs * 4 + fat * 9
+        if total_macros > 0:
+            protein_ratio = (protein * 4) / total_macros * 100
+            carbs_ratio = (carbs * 4) / total_macros * 100
+            fat_ratio = (fat * 9) / total_macros * 100
         else:
-            assessment = f"这餐热量({calories}kcal)很适合您的{meal_type}需求，营养搭配合理！"
+            protein_ratio = carbs_ratio = fat_ratio = 0
         
-        result['personalized_assessment'] = assessment
+        # 生成个性化评估
+        assessment_parts = []
+        
+        # 热量评估
+        calorie_deviation = (calories - expected_calories) / expected_calories * 100
+        if calorie_deviation > 20:
+            assessment_parts.append(f"⚠️ 热量({calories}kcal)比建议摄入量({expected_calories:.0f}kcal)高{calorie_deviation:.0f}%，建议控制分量")
+        elif calorie_deviation < -20:
+            assessment_parts.append(f"📉 热量({calories}kcal)比建议摄入量低{abs(calorie_deviation):.0f}%，可适当增加营养密度")
+        else:
+            assessment_parts.append(f"✅ 热量({calories}kcal)符合您的{meal_type}需求")
+        
+        # 蛋白质评估
+        if protein_ratio < 15:
+            assessment_parts.append("💪 蛋白质含量偏低，建议增加优质蛋白质来源")
+        elif protein_ratio > 30:
+            assessment_parts.append("🥩 蛋白质含量较高，有助于肌肉合成和饱腹感")
+        
+        # 基于年龄的特殊建议
+        if age >= 65:
+            assessment_parts.append("👴 建议增加钙质和维生素D的摄入")
+        elif age <= 25:
+            assessment_parts.append("💪 年轻阶段，注意均衡营养支持身体发育")
+        
+        # 基于性别的建议
+        if gender == 'female':
+            assessment_parts.append("🌸 女性建议注意铁质和叶酸的补充")
+        
+        result['personalized_assessment'] = ' '.join(assessment_parts)
         return result
     
+    def _calculate_bmr(self, age, weight, height, gender):
+        """计算基础代谢率 (Harris-Benedict方程)"""
+        if gender == 'male':
+            return 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age)
+        else:
+            return 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
+    
+    def _calculate_tdee(self, bmr, activity_level):
+        """计算总日消耗能量"""
+        activity_multipliers = {
+            'sedentary': 1.2,           # 久坐，几乎不运动
+            'lightly_active': 1.375,    # 轻度活动，每周1-3次运动
+            'moderately_active': 1.55,  # 中度活动，每周3-5次运动
+            'very_active': 1.725,       # 高度活动，每周6-7次运动
+            'extra_active': 1.9         # 极度活动，每天2次运动或重体力劳动
+        }
+        return bmr * activity_multipliers.get(activity_level, 1.55)
+    
     def _calculate_daily_needs(self, age, weight, activity_level):
-        """计算每日热量需求"""
+        """计算每日热量需求（保持向后兼容）"""
         # 简化的BMR计算
         bmr = 88.362 + (13.397 * weight) + (4.799 * 170) - (5.677 * age)  # 假设身高170cm
         
@@ -2228,16 +2309,16 @@ def api_v2_meals():
                 quantity=1.0
             )
             
-            # 如果有AI分析结果，填充兼容字段
+            # 如果有AI分析结果，填充数据
             if analysis_result:
+                # 填充兼容的v1字段
                 meal_log.calories = analysis_result.get('total_calories', 0)
                 meal_log.protein = analysis_result.get('total_protein', 0.0)
                 meal_log.carbs = analysis_result.get('total_carbs', 0.0)
                 meal_log.fat = analysis_result.get('total_fat', 0.0)
-                # v2字段通过访问方法获取，不直接设置
-                # meal_log.food_items_json = analysis_result.get('food_items_with_emoji', [])
-                # meal_log.total_calories = analysis_result.get('total_calories', 0)
-                # ... 其他v2字段已移除
+                
+                # 保存完整的AI分析结果到JSON字段
+                meal_log.analysis_result = analysis_result
             
             db.session.add(meal_log)
             db.session.commit()
@@ -2665,22 +2746,36 @@ def init_database_route():
         food_prompt = PromptTemplate.query.filter_by(type='food', is_active=True).first()
         if not food_prompt:
             default_food_prompt = PromptTemplate(
-                name='默认饮食分析模板',
+                name='智能个性化饮食分析模板',
                 type='food',
-                prompt_content='''分析食物: {food_description}
+                prompt_content='''作为专业营养师，请分析以下食物并提供个性化建议。
 
-返回JSON格式:
+食物描述: {food_description}
+餐次: {meal_type}
+用户信息: {user_info}
+
+请基于营养学原理，考虑用户的个人情况（年龄、性别、身高、体重等），进行专业分析。
+
+计算要求：
+1. 准确估算各营养素含量
+2. 基于用户BMR和TDEE计算个性化热量需求
+3. 考虑餐次分配比例（早餐30%，午餐40%，晚餐30%）
+4. 提供针对性的营养建议
+
+返回严格的JSON格式：
 {{
-    "food_items_with_emoji": ["🍚 白米饭(150g)"],
+    "food_items_with_emoji": ["🍚 白米饭(150g)", "🥩 鸡胸肉(100g)"],
     "total_calories": 350,
-    "total_protein": 15.0,
+    "total_protein": 25.0,
     "total_carbs": 45.0,
-    "total_fat": 12.0,
-    "health_score": 7.5,
-    "meal_suitability": "适合{meal_type}",
-    "nutrition_highlights": ["🍚 米饭: 提供能量"],
-    "dietary_suggestions": ["搭配蔬菜更营养"],
-    "personalized_assessment": "营养评估"
+    "total_fat": 8.0,
+    "total_fiber": 2.5,
+    "total_sodium": 400.0,
+    "health_score": 8.5,
+    "meal_suitability": "适合{meal_type}，营养搭配均衡",
+    "nutrition_highlights": ["💪 高蛋白质，有助肌肉修复", "🌾 复合碳水，提供持久能量"],
+    "dietary_suggestions": ["🥬 建议搭配绿叶蔬菜增加维生素", "🚰 餐后多喝水促进消化"],
+    "personalized_assessment": "基于您的个人情况进行的详细营养评估和建议"
 }}''',
                 is_active=True,
                 created_by=admin.id if admin else None
