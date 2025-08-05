@@ -501,6 +501,204 @@ def create_default_prompts():
     db.session.commit()
     print("默认Prompt模板已创建")
 
+@app.route('/api/analyze-exercise', methods=['POST'])
+@login_required
+def analyze_exercise():
+    """运动分析API端点"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '无效的请求数据'}), 400
+        
+        exercise_type = data.get('exercise_type')
+        exercise_name = data.get('exercise_name')
+        duration = data.get('duration')
+        
+        if not all([exercise_type, exercise_name, duration]):
+            return jsonify({'error': '缺少必要的运动信息'}), 400
+        
+        # 获取用户资料
+        user_profile = getattr(current_user, 'profile', None)
+        if not user_profile:
+            # 使用默认值
+            weight = 70
+            height = 170
+            age = 30
+            gender = '未知'
+        else:
+            weight = user_profile.weight or 70
+            height = user_profile.height or 170
+            age = user_profile.age or 30
+            gender = user_profile.gender or '未知'
+        
+        # 计算卡路里消耗
+        calories_burned, intensity = calculate_calories(exercise_type, exercise_name, duration, weight)
+        
+        # 计算BMR
+        if gender == '男':
+            bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age)
+        else:
+            bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
+        
+        # 计算健身得分 (简化版本)
+        fitness_score = min(100, int((calories_burned / 10) + (duration / 2)))
+        
+        # 生成分析结果
+        analysis_result = {
+            'calories_burned': calories_burned,
+            'intensity_level': intensity,
+            'fitness_score': fitness_score,
+            'exercise_analysis': {
+                'heart_rate_zone': get_heart_rate_zone(intensity),
+                'energy_system': get_energy_system(exercise_type, duration),
+                'primary_benefits': get_primary_benefits(exercise_type),
+                'muscle_groups': get_muscle_groups(exercise_type)
+            },
+            'personalized_feedback': {
+                'suitable_level': '适合' if intensity != 'high' or age < 50 else '需谨慎',
+                'age_considerations': get_age_considerations(age, intensity),
+                'fitness_level_match': '与活动水平匹配'
+            },
+            'recommendations': {
+                'next_workout': get_next_workout_suggestion(exercise_type),
+                'intensity_adjustment': get_intensity_adjustment(intensity),
+                'duration_suggestion': get_duration_suggestion(duration),
+                'recovery_advice': get_recovery_advice(intensity, duration)
+            },
+            'motivation_message': get_motivation_message(fitness_score),
+            'health_alerts': get_health_alerts(intensity, duration, age)
+        }
+        
+        return jsonify(analysis_result)
+        
+    except Exception as e:
+        print(f"运动分析错误: {e}")
+        return jsonify({'error': '分析过程中出现错误'}), 500
+
+def get_heart_rate_zone(intensity):
+    """获取心率区间"""
+    zones = {
+        'low': '脂肪燃烧区间 (60-70%)',
+        'medium': '有氧区间 (70-80%)',
+        'high': '无氧区间 (80-90%)'
+    }
+    return zones.get(intensity, '有氧区间')
+
+def get_energy_system(exercise_type, duration):
+    """获取能量系统"""
+    if duration < 10:
+        return '磷酸肌酸系统'
+    elif duration < 60:
+        return '糖酵解系统'
+    else:
+        return '有氧系统'
+
+def get_primary_benefits(exercise_type):
+    """获取主要益处"""
+    benefits_map = {
+        'cardio': ['心肺功能', '脂肪燃烧', '耐力提升'],
+        'strength': ['肌肉力量', '骨密度', '基础代谢'],
+        'yoga': ['柔韧性', '平衡性', '压力缓解'],
+        'sports': ['协调性', '反应速度', '团队精神'],
+        'walking': ['心血管健康', '关节友好', '日常活力'],
+        'running': ['心肺耐力', '下肢力量', '心理健康'],
+        'cycling': ['腿部力量', '心肺功能', '关节保护'],
+        'swimming': ['全身协调', '心肺功能', '关节友好']
+    }
+    return benefits_map.get(exercise_type, ['整体健康', '体能提升'])
+
+def get_muscle_groups(exercise_type):
+    """获取肌肉群"""
+    muscle_map = {
+        'cardio': ['心肌', '下肢肌群'],
+        'strength': ['目标肌群', '核心肌群'],
+        'yoga': ['全身肌群', '深层稳定肌'],
+        'sports': ['全身协调肌群'],
+        'walking': ['腿部肌群', '核心肌群'],
+        'running': ['下肢肌群', '核心肌群'],
+        'cycling': ['股四头肌', '臀大肌', '小腿肌'],
+        'swimming': ['全身肌群', '核心肌群']
+    }
+    return muscle_map.get(exercise_type, ['相关肌群'])
+
+def get_age_considerations(age, intensity):
+    """获取年龄建议"""
+    if age < 25:
+        return '年轻体力充沛，可适当增加强度'
+    elif age < 45:
+        return '成年期适合各种运动方式'
+    elif age < 65:
+        return '中年期注意关节保护和恢复'
+    else:
+        return '老年期建议低冲击运动'
+
+def get_next_workout_suggestion(exercise_type):
+    """获取下次锻炼建议"""
+    suggestions = {
+        'cardio': '可尝试力量训练作为补充',
+        'strength': '建议搭配有氧运动',
+        'yoga': '可增加一些力量训练',
+        'sports': '注意技术练习和体能训练',
+        'walking': '可逐步增加步行速度',
+        'running': '可尝试间歇训练',
+        'cycling': '可增加爬坡训练',
+        'swimming': '可练习不同泳姿'
+    }
+    return suggestions.get(exercise_type, '保持规律运动习惯')
+
+def get_intensity_adjustment(intensity):
+    """获取强度调整建议"""
+    adjustments = {
+        'low': '可适当增加运动强度',
+        'medium': '当前强度很合适',
+        'high': '高强度训练，注意恢复'
+    }
+    return adjustments.get(intensity, '保持当前强度')
+
+def get_duration_suggestion(duration):
+    """获取时长建议"""
+    if duration < 20:
+        return '可适当延长运动时间'
+    elif duration < 60:
+        return '运动时长很合适'
+    else:
+        return '长时间运动，注意水分补充'
+
+def get_recovery_advice(intensity, duration):
+    """获取恢复建议"""
+    if intensity == 'high' or duration > 60:
+        return '充分休息24-48小时'
+    elif intensity == 'medium':
+        return '轻度活动有助恢复'
+    else:
+        return '可进行日常活动'
+
+def get_motivation_message(fitness_score):
+    """获取激励信息"""
+    if fitness_score >= 80:
+        return '表现卓越！继续保持这种状态！'
+    elif fitness_score >= 60:
+        return '做得很好！坚持就是胜利！'
+    elif fitness_score >= 40:
+        return '不错的开始，继续努力！'
+    else:
+        return '每一步都是进步，加油！'
+
+def get_health_alerts(intensity, duration, age):
+    """获取健康提醒"""
+    alerts = []
+    
+    if intensity == 'high' and age > 50:
+        alerts.append('高强度运动，请注意心率监测')
+    
+    if duration > 90:
+        alerts.append('长时间运动，注意补充水分和电解质')
+    
+    if intensity == 'high' and duration > 60:
+        alerts.append('高强度长时间运动，建议专业指导')
+    
+    return alerts
+
 def init_database():
     """初始化数据库函数"""
     print("🚀 初始化数据库...")
