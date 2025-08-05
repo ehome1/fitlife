@@ -440,7 +440,8 @@ def health_check():
     """健康检查端点"""
     try:
         # 测试数据库连接
-        db.session.execute('SELECT 1')
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now(timezone.utc).isoformat(),
@@ -512,10 +513,18 @@ def analyze_exercise():
         
         exercise_type = data.get('exercise_type')
         exercise_name = data.get('exercise_name')
-        duration = data.get('duration')
+        duration_raw = data.get('duration')
         
-        if not all([exercise_type, exercise_name, duration]):
+        if not all([exercise_type, exercise_name, duration_raw]):
             return jsonify({'error': '缺少必要的运动信息'}), 400
+        
+        # 确保duration是数字
+        try:
+            duration = int(duration_raw)
+            if duration <= 0:
+                return jsonify({'error': '运动时长必须大于0'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': '运动时长必须是有效数字'}), 400
         
         # 获取用户资料
         user_profile = getattr(current_user, 'profile', None)
@@ -532,7 +541,7 @@ def analyze_exercise():
             gender = user_profile.gender or '未知'
         
         # 计算卡路里消耗
-        calories_burned, intensity = calculate_calories(exercise_type, exercise_name, duration, weight)
+        calories_burned, intensity = estimate_calories_burned(exercise_type, exercise_name, duration, weight)
         
         # 计算BMR
         if gender == '男':
@@ -569,11 +578,21 @@ def analyze_exercise():
             'health_alerts': get_health_alerts(intensity, duration, age)
         }
         
-        return jsonify(analysis_result)
+        return jsonify({
+            'success': True,
+            'data': analysis_result
+        })
         
     except Exception as e:
-        print(f"运动分析错误: {e}")
-        return jsonify({'error': '分析过程中出现错误'}), 500
+        import traceback
+        error_msg = f"运动分析错误: {str(e)}"
+        error_trace = traceback.format_exc()
+        print(f"{error_msg}\n{error_trace}")
+        return jsonify({
+            'success': False,
+            'error': '分析过程中出现错误',
+            'details': str(e) if app.debug else None
+        }), 500
 
 def get_heart_rate_zone(intensity):
     """获取心率区间"""
