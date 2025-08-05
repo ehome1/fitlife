@@ -165,11 +165,11 @@ class ExerciseLog(db.Model):
 
 class MealLog(db.Model):
     """
-    MealLog模型 - 采用防御性策略处理不同数据库架构
+    MealLog模型 - 生产环境兼容版本
     """
     __tablename__ = 'meal_log'
     
-    # ===== 基础字段（肯定存在）=====
+    # ===== 基础字段（生产环境确定存在）=====
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date = db.Column(db.Date, nullable=False, default=lambda: datetime.now(timezone.utc).date())
@@ -178,70 +178,65 @@ class MealLog(db.Model):
     calories = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
-    # ===== 可能存在的v1字段 =====
+    # ===== v1字段（生产环境存在）=====
     protein = db.Column(db.Float)
     carbs = db.Column(db.Float)
     fat = db.Column(db.Float)
     quantity = db.Column(db.Float)
     
-    # ===== 可能存在的v2字段 =====
-    # 如果这些字段存在于数据库中，它们会被自动映射
-    # 如果不存在，SQLAlchemy会忽略它们
-    food_description = db.Column(db.Text)
-    food_items_json = db.Column(db.JSON)
-    total_calories = db.Column(db.Integer)
-    total_protein = db.Column(db.Float)
-    total_carbs = db.Column(db.Float)
-    total_fat = db.Column(db.Float)
-    total_fiber = db.Column(db.Float)
-    total_sodium = db.Column(db.Float)
-    health_score = db.Column(db.Float)
-    meal_suitability = db.Column(db.String(100))
-    nutrition_highlights = db.Column(db.JSON)
-    dietary_suggestions = db.Column(db.JSON)
-    personalized_assessment = db.Column(db.Text)
-    updated_at = db.Column(db.DateTime)
+    # ===== v2字段 - 暂时移除以避免生产环境错误 =====
+    # 在数据库架构升级后再启用这些字段：
+    # food_description = db.Column(db.Text)
+    # food_items_json = db.Column(db.JSON)
+    # total_calories = db.Column(db.Integer)
+    # total_protein = db.Column(db.Float)
+    # total_carbs = db.Column(db.Float)
+    # total_fat = db.Column(db.Float)
+    # total_fiber = db.Column(db.Float)
+    # total_sodium = db.Column(db.Float)
+    # health_score = db.Column(db.Float)
+    # meal_suitability = db.Column(db.String(100))
+    # nutrition_highlights = db.Column(db.JSON)
+    # dietary_suggestions = db.Column(db.JSON)
+    # personalized_assessment = db.Column(db.Text)
+    # updated_at = db.Column(db.DateTime)
     
-    # ===== 安全访问方法 =====
+    # ===== 兼容性访问方法 =====
     
     def get_food_description(self):
         """安全获取食物描述"""
-        return getattr(self, 'food_description', None) or self.food_name or '未记录'
+        return self.food_name or '未记录'
     
     def get_food_items_json(self):
         """安全获取食物列表"""
-        return getattr(self, 'food_items_json', None) or []
+        return []
     
     def get_total_calories(self):
         """安全获取总热量"""
-        return getattr(self, 'total_calories', None) or self.calories or 0
+        return self.calories or 0
     
     def get_total_protein(self):
         """安全获取总蛋白质"""
-        return getattr(self, 'total_protein', None) or self.protein or 0.0
+        return self.protein or 0.0
     
     def get_total_carbs(self):
         """安全获取总碳水"""
-        return getattr(self, 'total_carbs', None) or self.carbs or 0.0
+        return self.carbs or 0.0
     
     def get_total_fat(self):
         """安全获取总脂肪"""
-        return getattr(self, 'total_fat', None) or self.fat or 0.0
+        return self.fat or 0.0
     
     def get_total_fiber(self):
         """安全获取总纤维"""
-        return getattr(self, 'total_fiber', None) or 2.0
+        return 2.0
     
     def get_total_sodium(self):
         """安全获取总钠"""
-        return getattr(self, 'total_sodium', None) or 300.0
+        return 300.0
     
     def get_health_score(self):
         """安全获取健康评分"""
-        score = getattr(self, 'health_score', None)
-        if score is not None:
-            return score
-        
         # 基于现有数据计算
         calories = self.get_total_calories()
         protein = self.get_total_protein()
@@ -257,14 +252,10 @@ class MealLog(db.Model):
     
     def get_meal_suitability(self):
         """安全获取餐次适合度"""
-        return getattr(self, 'meal_suitability', None) or f'适合{self.meal_type_display}'
+        return f'适合{self.meal_type_display}'
     
     def get_nutrition_highlights(self):
         """安全获取营养亮点"""
-        highlights = getattr(self, 'nutrition_highlights', None)
-        if highlights:
-            return highlights
-        
         # 生成默认亮点
         result = ['🍽️ 基础营养']
         calories = self.get_total_calories()
@@ -278,10 +269,6 @@ class MealLog(db.Model):
     
     def get_dietary_suggestions(self):
         """安全获取饮食建议"""
-        suggestions = getattr(self, 'dietary_suggestions', None)
-        if suggestions:
-            return suggestions
-        
         # 生成默认建议
         result = ['🥗 均衡搭配']
         calories = self.get_total_calories()
@@ -294,10 +281,6 @@ class MealLog(db.Model):
     
     def get_personalized_assessment(self):
         """安全获取个性化评估"""
-        assessment = getattr(self, 'personalized_assessment', None)
-        if assessment:
-            return assessment
-        
         # 生成默认评估
         calories = self.get_total_calories()
         if calories < 200:
