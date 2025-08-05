@@ -238,27 +238,6 @@
 • 半盘西兰花炒牛肉
 
 提示：越详细的描述，AI分析越准确！" required></textarea>
-                                    <div class="form-text">
-                                        <i class="fas fa-lightbulb text-warning me-1"></i>
-                                        <strong>小贴士：</strong>包含食物种类、大概分量、烹饪方式等信息，AI会更准确分析营养成分
-                                    </div>
-                                </div>
-                                
-                                <!-- 快速输入建议 -->
-                                <div class="quick-input-suggestions">
-                                    <label class="form-label small text-muted">💡 快速输入建议：</label>
-                                    <div class="suggestions-container">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="一碗白米饭，两个煎蛋，一杯牛奶">
-                                            🍳 简单早餐
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="一份宫保鸡丁，一碗米饭，一盘清炒菠菜">
-                                            🍛 中式午餐
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary suggestion-btn" data-text="烤鸡胸肉200g，蔬菜沙拉一份，全麦面包两片">
-                                            🥗 健康晚餐
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -930,21 +909,6 @@ function generateAnalysisResultHTML(result) {
                 </div>
             </div>
             
-            <!-- 营养亮点 -->
-            <div class="mb-3">
-                <h6>🌟 营养亮点：</h6>
-                <ul class="highlight-list">
-                    ${highlights.map(highlight => `<li>✅ ${highlight}</li>`).join('')}
-                </ul>
-            </div>
-            
-            <!-- 饮食建议 -->
-            <div class="mb-3">
-                <h6>💡 饮食建议：</h6>
-                <ul class="suggestion-list">
-                    ${suggestions.map(suggestion => `<li>💭 ${suggestion}</li>`).join('')}
-                </ul>
-            </div>
             
             <!-- 个性化评估 -->
             ${result.personalized_assessment ? `

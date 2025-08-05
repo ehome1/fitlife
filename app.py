@@ -2215,28 +2215,29 @@ def api_v2_meals():
                     meal_type=meal_type
                 )
             
-            # 创建记录
+            # 创建记录 - 使用兼容字段
             meal_log = MealLog(
                 user_id=current_user.id,
                 date=parsed_date,
                 meal_type=meal_type,
-                food_description=food_description
+                food_name=food_description[:100] if food_description else '未指定',  # 截断到100字符以适配数据库
+                calories=0,  # 默认值，稍后填充
+                protein=0.0,
+                carbs=0.0,
+                fat=0.0,
+                quantity=1.0
             )
             
-            # 如果有AI分析结果，填充数据
+            # 如果有AI分析结果，填充兼容字段
             if analysis_result:
-                meal_log.food_items_json = analysis_result.get('food_items_with_emoji', [])
-                meal_log.total_calories = analysis_result.get('total_calories', 0)
-                meal_log.total_protein = analysis_result.get('total_protein', 0)
-                meal_log.total_carbs = analysis_result.get('total_carbs', 0)
-                meal_log.total_fat = analysis_result.get('total_fat', 0)
-                meal_log.total_fiber = analysis_result.get('total_fiber', 0)
-                meal_log.total_sodium = analysis_result.get('total_sodium', 0)
-                meal_log.health_score = analysis_result.get('health_score', 0)
-                meal_log.meal_suitability = analysis_result.get('meal_suitability', '')
-                meal_log.nutrition_highlights = analysis_result.get('nutrition_highlights', [])
-                meal_log.dietary_suggestions = analysis_result.get('dietary_suggestions', [])
-                meal_log.personalized_assessment = analysis_result.get('personalized_assessment', '')
+                meal_log.calories = analysis_result.get('total_calories', 0)
+                meal_log.protein = analysis_result.get('total_protein', 0.0)
+                meal_log.carbs = analysis_result.get('total_carbs', 0.0)
+                meal_log.fat = analysis_result.get('total_fat', 0.0)
+                # v2字段通过访问方法获取，不直接设置
+                # meal_log.food_items_json = analysis_result.get('food_items_with_emoji', [])
+                # meal_log.total_calories = analysis_result.get('total_calories', 0)
+                # ... 其他v2字段已移除
             
             db.session.add(meal_log)
             db.session.commit()
