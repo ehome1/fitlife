@@ -1355,8 +1355,9 @@ def exercise_log():
             exercise_date = datetime.now().date()
         
         # 使用AI分析运动（如果用户有个人资料）
-        if current_user.profile:
-            ai_analysis = analyze_exercise_with_ai(exercise_type, exercise_name, duration, current_user.profile)
+        user_profile = getattr(current_user, 'profile', None)
+        if user_profile:
+            ai_analysis = analyze_exercise_with_ai(exercise_type, exercise_name, duration, user_profile)
             calories_burned = ai_analysis['calories_burned']
             intensity = ai_analysis['intensity_level']
         else:
@@ -1471,7 +1472,8 @@ def api_analyze_food():
         
         # 使用数据库prompt模板进行AI分析
         logger.info("使用数据库prompt AI分析...")
-        analysis_result = analyze_food_with_database_prompt(food_description, meal_type, current_user.profile)
+        user_profile = getattr(current_user, 'profile', None)
+        analysis_result = analyze_food_with_database_prompt(food_description, meal_type, user_profile)
         logger.info(f"数据库prompt AI分析完成")
         
         return jsonify({
@@ -1542,11 +1544,12 @@ def api_analyze_exercise():
         if not all([exercise_type, exercise_name, duration]):
             return jsonify({'error': '运动信息不完整'}), 400
         
-        if not current_user.profile:
+        user_profile = getattr(current_user, 'profile', None)
+        if not user_profile:
             return jsonify({'error': '请先完善个人资料'}), 400
         
         # 调用AI分析函数
-        analysis_result = analyze_exercise_with_ai(exercise_type, exercise_name, duration, current_user.profile)
+        analysis_result = analyze_exercise_with_ai(exercise_type, exercise_name, duration, user_profile)
         
         return jsonify({
             'success': True,
@@ -1755,7 +1758,7 @@ def profile():
             'username': current_user.username,
             'email': current_user.email,
             'created_at': current_user.created_at,
-            'profile': current_user.profile,
+            'profile': getattr(current_user, 'profile', None),
             'meal_logs_count': 0,
             'exercise_logs_count': 0,
             'goals_count': 0
@@ -1941,7 +1944,7 @@ def dashboard():
     total_consumed = sum(meal.calories for meal in today_meals)
     
     # 获取用户资料和目标
-    profile = current_user.profile
+    profile = getattr(current_user, 'profile', None)
     active_goal = FitnessGoal.query.filter_by(
         user_id=current_user.id, 
         is_active=True
@@ -2184,8 +2187,8 @@ def api_v2_food_analyze():
         if not food_description:
             return jsonify({'success': False, 'error': '食物描述不能为空'})
         
-        # 获取用户信息
-        user_profile = current_user.profile
+        # 安全获取用户信息
+        user_profile = getattr(current_user, 'profile', None)
         
         # 使用新版食物分析引擎
         analyzer = FoodAnalyzer()
@@ -2289,7 +2292,7 @@ def api_v2_meals():
             analysis_result = None
             if data.get('analyze', True):
                 analyzer = FoodAnalyzer()
-                user_profile = current_user.profile
+                user_profile = getattr(current_user, 'profile', None)
                 analysis_result = analyzer.analyze_comprehensive(
                     food_description=food_description,
                     user_profile=user_profile,
@@ -2368,7 +2371,7 @@ def api_v2_nutrition_daily():
         }
         
         # 营养目标（基于用户信息）
-        user_profile = current_user.profile
+        user_profile = getattr(current_user, 'profile', None)
         if user_profile:
             daily_targets = {
                 'calories': int(user_profile.bmr * 1.55) if user_profile.bmr else 2000,
