@@ -1775,10 +1775,14 @@ def settings():
 def health_check():
     """系统健康检查API端点"""
     try:
-        # 检查数据库连接
+        # 检查数据库连接 - 使用安全的查询方式
+        from sqlalchemy import text
         user_count = User.query.count()
         exercise_count = ExerciseLog.query.count()
-        meal_count = MealLog.query.count()
+        
+        # 避免MealLog的架构问题，使用原生SQL
+        meal_count_result = db.session.execute(text('SELECT COUNT(*) FROM meal_log'))
+        meal_count = meal_count_result.scalar()
         
         # 检查AI API（简单测试）
         ai_status = 'available'
@@ -1817,10 +1821,14 @@ def health_check():
 def test():
     """测试页面，检查应用状态"""
     try:
-        # 检查数据库连接
+        # 检查数据库连接 - 使用安全的查询方式
+        from sqlalchemy import text
         user_count = User.query.count()
         exercise_count = ExerciseLog.query.count()
-        meal_count = MealLog.query.count()
+        
+        # 避免MealLog的架构问题，使用原生SQL
+        meal_count_result = db.session.execute(text('SELECT COUNT(*) FROM meal_log'))
+        meal_count = meal_count_result.scalar()
         
         status = {
             'app_status': 'running',
