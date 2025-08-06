@@ -349,9 +349,14 @@ def dashboard():
         # 计算今日消耗热量
         total_burned = sum(ex.calories_burned or 0 for ex in today_exercises)
         
-        # 饮食数据设为0（已删除饮食功能）
-        total_consumed = 0
-        today_meals = []
+        # 获取今日饮食记录
+        today_meals = MealLog.query.filter(
+            MealLog.user_id == current_user.id,
+            func.date(MealLog.created_at) == today
+        ).all()
+        
+        # 计算今日摄入热量
+        total_consumed = sum(meal.calories or 0 for meal in today_meals)
         
         return render_template('dashboard.html',
                              profile=profile,
