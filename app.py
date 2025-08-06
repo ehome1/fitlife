@@ -447,6 +447,7 @@ def meal_log():
             meal_date_str = request.form['meal_date']
             meal_type = request.form['meal_type']
             notes = request.form.get('notes', '')
+            food_description = request.form.get('food_description', '').strip()
             
             # 解析日期
             try:
@@ -456,6 +457,8 @@ def meal_log():
             
             # 处理食物列表数据
             food_items = []
+            
+            # 首先处理手动输入的食物项
             food_names = request.form.getlist('food_name[]')
             food_amounts = request.form.getlist('food_amount[]')
             food_units = request.form.getlist('food_unit[]')
@@ -473,19 +476,53 @@ def meal_log():
                         'unit': food_units[i] if i < len(food_units) else '个'
                     })
             
-            if not food_items:
-                flash('请至少添加一种食物！')
+            # 如果没有手动输入但有自然语言描述，尝试解析
+            if not food_items and food_description:
+                try:
+                    # 尝试使用AI解析自然语言
+                    parse_result = parse_natural_language_food(food_description, meal_type)
+                    if parse_result['success']:
+                        food_items = parse_result['food_items']
+                        logger.info(f"成功解析自然语言输入: {len(food_items)}项食物")
+                    else:
+                        # AI解析失败，创建简单的食物项
+                        food_items = [{
+                            'name': food_description[:100],  # 截取描述作为食物名
+                            'amount': 1,
+                            'unit': '份'
+                        }]
+                        logger.info("AI解析失败，使用简化食物项")
+                except Exception as e:
+                    logger.warning(f"自然语言解析失败: {e}")
+                    # 解析完全失败时，仍然创建一个基础记录
+                    food_items = [{
+                        'name': food_description[:100],
+                        'amount': 1,
+                        'unit': '份'
+                    }]
+            
+            # 检查是否有任何食物信息
+            if not food_items and not food_description:
+                flash('请描述您的饮食或手动添加食物项！')
                 return redirect(url_for('meal_log'))
             
             # 创建饮食记录（暂时不计算卡路里，等AI分析后更新）
             try:
+                # 如果用户有自然语言描述，将其添加到notes中
+                combined_notes = notes
+                if food_description:
+                    if combined_notes:
+                        combined_notes = f"原始描述: {food_description}\n\n{notes}"
+                    else:
+                        combined_notes = f"原始描述: {food_description}"
+                
                 meal_log_entry = MealLog(
                     user_id=current_user.id,
                     meal_date=meal_date,
                     meal_type=meal_type,
                     food_items=food_items,
                     total_calories=0,  # 初始值，AI分析后更新
-                    notes=notes
+                    notes=combined_notes
                 )
                 
                 db.session.add(meal_log_entry)
