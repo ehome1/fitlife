@@ -14,12 +14,7 @@ import hashlib
 # 加载环境变量
 load_dotenv()
 
-# 配置 Gemini AI (如果API密钥存在)
-api_key = os.getenv('GEMINI_API_KEY')
-if api_key:
-    genai.configure(api_key=api_key)
-else:
-    print("警告: GEMINI_API_KEY 环境变量未设置")
+# Gemini AI配置将在实际使用时进行
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -907,8 +902,8 @@ def analyze_meal():
             'details': str(e) if app.debug else None
         }), 500
 
-def parse_natural_language_food(food_description, meal_type):
-    """使用Gemini AI解析自然语言食物描述"""
+def get_gemini_model():
+    """获取配置好的Gemini模型"""
     try:
         import google.generativeai as genai
         
@@ -918,7 +913,15 @@ def parse_natural_language_food(food_description, meal_type):
             raise Exception("Gemini API Key未配置")
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        return genai.GenerativeModel('gemini-1.5-flash')
+    except Exception as e:
+        logger.warning(f"Gemini配置错误: {e}")
+        raise
+
+def parse_natural_language_food(food_description, meal_type):
+    """使用Gemini AI解析自然语言食物描述"""
+    try:
+        model = get_gemini_model()
         
         # 构建食物解析prompt
         parse_prompt = f"""
@@ -994,24 +997,26 @@ def parse_natural_language_food(food_description, meal_type):
 def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language_input=None):
     """调用Gemini API进行营养分析"""
     try:
-        import google.generativeai as genai
-        
-        # 配置Gemini API
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            raise Exception("Gemini API Key未配置")
-        
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # 先尝试获取Gemini模型
+        try:
+            model = get_gemini_model()
+        except Exception as e:
+            logger.warning(f"Gemini API不可用，使用fallback: {e}")
+            return generate_fallback_nutrition_analysis(food_items, meal_type)
         
         # 如果是自然语言输入，先解析提取食物信息
         if natural_language_input:
-            parse_result = parse_natural_language_food(natural_language_input, meal_type)
-            if parse_result['success']:
-                food_items = parse_result['food_items']
-            else:
-                # 解析失败，使用fallback
-                food_items = [{'name': '未识别食物', 'amount': 1, 'unit': '份'}]
+            try:
+                parse_result = parse_natural_language_food(natural_language_input, meal_type)
+                if parse_result['success']:
+                    food_items = parse_result['food_items']
+                else:
+                    # 解析失败，创建简单的食物项
+                    food_items = [{'name': natural_language_input[:50], 'amount': 1, 'unit': '份'}]
+            except Exception as e:
+                logger.warning(f"自然语言解析失败: {e}")
+                # 创建简单的食物项用于营养分析
+                food_items = [{'name': natural_language_input[:50], 'amount': 1, 'unit': '份'}]
         
         # 构建food_items字符串
         food_list_str = '\n'.join([
