@@ -120,8 +120,8 @@ class FitnessGoal(db.Model):
 class ExerciseLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    # exercise_date字段在生产环境不存在，暂时注释
-    # exercise_date = db.Column(db.Date, nullable=False)
+    # 实际数据库中的字段名为 'date'，需要匹配
+    date = db.Column(db.Date, nullable=False)
     exercise_type = db.Column(db.String(50), nullable=False)
     exercise_name = db.Column(db.String(100), nullable=False)
     duration = db.Column(db.Integer, nullable=False)  # 分钟
@@ -132,10 +132,8 @@ class ExerciseLog(db.Model):
     
     @property
     def exercise_date(self):
-        """兼容性属性 - 从created_at提取日期"""
-        if self.created_at:
-            return self.created_at.date()
-        return datetime.now(timezone.utc).date()
+        """兼容性属性 - 返回date字段"""
+        return self.date if self.date else datetime.now(timezone.utc).date()
     
     @property
     def exercise_type_display(self):
@@ -163,13 +161,43 @@ class ExerciseLog(db.Model):
 class MealLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    meal_date = db.Column(db.Date, nullable=False)
+    # 实际数据库中的字段名为 'date'，不是 'meal_date'
+    date = db.Column(db.Date, nullable=False)
     meal_type = db.Column(db.String(20), nullable=False)  # breakfast, lunch, dinner, snack
-    food_items = db.Column(db.JSON, nullable=False)  # 食物列表 [{"name": "苹果", "amount": 1, "unit": "个"}]
-    total_calories = db.Column(db.Integer)
+    # 实际数据库中是单个食物记录，不是JSON数组
+    food_name = db.Column(db.String(100))
+    quantity = db.Column(db.Float)
+    calories = db.Column(db.Integer)
+    protein = db.Column(db.Float)
+    carbs = db.Column(db.Float)
+    fat = db.Column(db.Float)
     analysis_result = db.Column(db.JSON)  # AI分析结果
-    notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # 兼容性属性
+    @property
+    def meal_date(self):
+        """兼容性属性 - 返回date字段"""
+        return self.date
+        
+    @property
+    def food_items(self):
+        """兼容性属性 - 返回单个食物项的列表格式"""
+        if self.food_name:
+            return [{'name': self.food_name, 'amount': self.quantity or 1, 'unit': '份'}]
+        return []
+    
+    @property 
+    def total_calories(self):
+        """兼容性属性 - 返回calories字段"""
+        return self.calories or 0
+        
+    @property
+    def notes(self):
+        """兼容性属性 - 从analysis_result提取notes"""
+        if self.analysis_result and isinstance(self.analysis_result, dict):
+            return self.analysis_result.get('notes', '')
+        return ''
     
     @property
     def meal_type_display(self):
@@ -386,54 +414,86 @@ def profile_setup():
 @app.route('/exercise-log', methods=['GET', 'POST'])
 @login_required
 def exercise_log():
-    if request.method == 'POST':
-        exercise_date_str = request.form['exercise_date']
-        exercise_type = request.form['exercise_type']
-        exercise_name = request.form['exercise_name']
-        duration = int(request.form['duration'])
-        notes = request.form.get('notes', '')
+    """运动记录页面"""
+    try:
+        # 确保ExerciseLog表存在
+        db.create_all()
         
-        # 解析日期并转换为datetime（兼容生产环境）
+        if request.method == 'POST':
+            try:
+                exercise_date_str = request.form['exercise_date']
+                exercise_type = request.form['exercise_type']
+                exercise_name = request.form['exercise_name']
+                duration = int(request.form['duration'])
+                notes = request.form.get('notes', '')
+                
+                # 验证必要字段
+                if not all([exercise_date_str, exercise_type, exercise_name, duration]):
+                    flash('请填写所有必要的运动信息！')
+                    return redirect(url_for('exercise_log'))
+                
+                # 解析日期并转换为datetime（兼容生产环境）
+                try:
+                    exercise_date = datetime.strptime(exercise_date_str, '%Y-%m-%d').date()
+                    # 将日期转换为该日期的datetime（用于created_at字段）
+                    exercise_datetime = datetime.combine(exercise_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+                except ValueError:
+                    exercise_datetime = datetime.now(timezone.utc)
+                    logger.warning(f"日期解析失败，使用当前时间: {exercise_date_str}")
+                
+                # 估算消耗的卡路里（简化版本）
+                profile = current_user.profile
+                if profile:
+                    weight = profile.weight
+                else:
+                    weight = 70  # 默认体重
+                
+                calories_burned, intensity = estimate_calories_burned(exercise_type, exercise_name, duration, weight)
+                
+                exercise_log_entry = ExerciseLog(
+                    user_id=current_user.id,
+                    date=exercise_date,  # 设置date字段
+                    created_at=exercise_datetime,  # created_at用于记录创建时间
+                    exercise_type=exercise_type,
+                    exercise_name=exercise_name,
+                    duration=duration,
+                    calories_burned=calories_burned,
+                    intensity=intensity,
+                    notes=notes
+                )
+                
+                db.session.add(exercise_log_entry)
+                db.session.commit()
+                
+                logger.info(f"用户{current_user.id}成功保存运动记录: {exercise_name}, {duration}分钟")
+                flash(f'运动记录已保存！消耗了 {calories_burned} 卡路里')
+                return redirect(url_for('exercise_log'))
+                
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"保存运动记录失败: {e}")
+                import traceback
+                traceback.print_exc()
+                flash('保存失败，请稍后重试')
+                return redirect(url_for('exercise_log'))
+    
+        # 获取最近的运动记录
         try:
-            exercise_date = datetime.strptime(exercise_date_str, '%Y-%m-%d').date()
-            # 将日期转换为该日期的datetime（用于created_at字段）
-            exercise_datetime = datetime.combine(exercise_date, datetime.min.time()).replace(tzinfo=timezone.utc)
-        except ValueError:
-            exercise_datetime = datetime.now(timezone.utc)
+            recent_exercises = ExerciseLog.query.filter_by(
+                user_id=current_user.id
+            ).order_by(ExerciseLog.created_at.desc()).limit(10).all()
+        except Exception as e:
+            logger.error(f"查询运动记录失败: {e}")
+            recent_exercises = []
         
-        # 估算消耗的卡路里（简化版本）
-        profile = current_user.profile
-        if profile:
-            weight = profile.weight
-        else:
-            weight = 70  # 默认体重
-        
-        calories_burned, intensity = estimate_calories_burned(exercise_type, exercise_name, duration, weight)
-        
-        exercise_log = ExerciseLog(
-            user_id=current_user.id,
-            # 不再使用exercise_date字段，使用created_at存储用户指定的日期
-            created_at=exercise_datetime,
-            exercise_type=exercise_type,
-            exercise_name=exercise_name,
-            duration=duration,
-            calories_burned=calories_burned,
-            intensity=intensity,
-            notes=notes
-        )
-        
-        db.session.add(exercise_log)
-        db.session.commit()
-        
-        flash(f'运动记录已保存！消耗了 {calories_burned} 卡路里')
-        return redirect(url_for('exercise_log'))
+        return render_template('exercise_log.html', recent_exercises=recent_exercises)
     
-    # 获取最近的运动记录
-    recent_exercises = ExerciseLog.query.filter_by(
-        user_id=current_user.id
-    ).order_by(ExerciseLog.created_at.desc()).limit(10).all()
-    
-    return render_template('exercise_log.html', recent_exercises=recent_exercises)
+    except Exception as e:
+        logger.error(f"运动记录页面错误: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('页面加载失败，请稍后重试')
+        return redirect(url_for('dashboard'))
 
 @app.route('/meal-log', methods=['GET', 'POST'])
 @login_required
@@ -506,29 +566,32 @@ def meal_log():
                 flash('请描述您的饮食或手动添加食物项！')
                 return redirect(url_for('meal_log'))
             
-            # 创建饮食记录（暂时不计算卡路里，等AI分析后更新）
+            # 创建饮食记录（每个食物项创建单独记录）
             try:
-                # 如果用户有自然语言描述，将其添加到notes中
-                combined_notes = notes
+                # 准备notes信息
+                combined_notes = {'notes': notes}
                 if food_description:
-                    if combined_notes:
-                        combined_notes = f"原始描述: {food_description}\n\n{notes}"
-                    else:
-                        combined_notes = f"原始描述: {food_description}"
+                    combined_notes['original_description'] = food_description
                 
-                meal_log_entry = MealLog(
-                    user_id=current_user.id,
-                    meal_date=meal_date,
-                    meal_type=meal_type,
-                    food_items=food_items,
-                    total_calories=0,  # 初始值，AI分析后更新
-                    notes=combined_notes
-                )
+                # 为每个食物项创建单独的记录
+                saved_count = 0
+                for food_item in food_items:
+                    meal_log_entry = MealLog(
+                        user_id=current_user.id,
+                        date=meal_date,  # 使用date字段
+                        meal_type=meal_type,
+                        food_name=food_item.get('name', '未知食物'),
+                        quantity=food_item.get('amount', 1),
+                        calories=0,  # 初始值，等AI分析后更新
+                        analysis_result=combined_notes
+                    )
+                    
+                    db.session.add(meal_log_entry)
+                    saved_count += 1
                 
-                db.session.add(meal_log_entry)
                 db.session.commit()
                 
-                flash('饮食记录已保存！建议使用AI分析获取详细营养信息')
+                flash(f'饮食记录已保存！共记录了{saved_count}种食物，建议使用AI分析获取详细营养信息')
                 return redirect(url_for('meal_log'))
                 
             except Exception as e:
