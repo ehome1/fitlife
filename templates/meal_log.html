@@ -34,44 +34,71 @@
                     
                     <div class="mb-3">
                         <label class="form-label">
-                            <i class="fas fa-apple-alt me-2"></i>食物输入
+                            <i class="fas fa-apple-alt me-2"></i>描述你的饮食
                         </label>
                         
-                        <div id="food-items-container">
-                            <div class="food-item-row mb-2">
-                                <div class="row g-2">
-                                    <div class="col-5">
-                                        <input type="text" class="form-control" name="food_name[]" placeholder="食物名称" required>
-                                    </div>
-                                    <div class="col-3">
-                                        <input type="number" class="form-control" name="food_amount[]" placeholder="数量" min="0.1" step="0.1" required>
-                                    </div>
-                                    <div class="col-3">
-                                        <select class="form-select" name="food_unit[]" required>
-                                            <option value="克">克</option>
-                                            <option value="个">个</option>
-                                            <option value="片">片</option>
-                                            <option value="碗">碗</option>
-                                            <option value="盒">盒</option>
-                                            <option value="瓶">瓶</option>
-                                            <option value="杯">杯</option>
-                                            <option value="勺">勺</option>
-                                            <option value="根">根</option>
-                                            <option value="块">块</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-1">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-food-item" disabled>
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                        <!-- 自然语言输入方式 -->
+                        <div id="natural-language-input" class="mb-3">
+                            <textarea class="form-control" id="food_description" name="food_description" 
+                                      rows="4" placeholder="请描述你这餐吃的食物...&#10;&#10;例如：早餐吃了一个苹果，一盒蒙牛牛奶，两片全麦面包，还有一个煎蛋"></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                用自然语言描述即可，AI会自动识别食物种类和分量
                             </div>
                         </div>
                         
-                        <button type="button" class="btn btn-outline-success btn-sm" id="add-food-item">
-                            <i class="fas fa-plus me-1"></i>添加食物
-                        </button>
+                        <!-- 可折叠的手动输入方式 -->
+                        <div class="mb-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" 
+                                    data-bs-target="#manual-input-section" aria-expanded="false">
+                                <i class="fas fa-list me-1"></i>手动逐项输入
+                            </button>
+                        </div>
+                        
+                        <div class="collapse" id="manual-input-section">
+                            <div class="card card-body">
+                                <div id="food-items-container">
+                                    <div class="food-item-row mb-2">
+                                        <div class="row g-2">
+                                            <div class="col-5">
+                                                <input type="text" class="form-control" name="food_name[]" placeholder="食物名称">
+                                            </div>
+                                            <div class="col-3">
+                                                <input type="number" class="form-control" name="food_amount[]" placeholder="数量" min="0.1" step="0.1">
+                                            </div>
+                                            <div class="col-3">
+                                                <select class="form-select" name="food_unit[]">
+                                                    <option value="克">克</option>
+                                                    <option value="个">个</option>
+                                                    <option value="片">片</option>
+                                                    <option value="碗">碗</option>
+                                                    <option value="盒">盒</option>
+                                                    <option value="瓶">瓶</option>
+                                                    <option value="杯">杯</option>
+                                                    <option value="勺">勺</option>
+                                                    <option value="根">根</option>
+                                                    <option value="块">块</option>
+                                                    <option value="袋">袋</option>
+                                                    <option value="罐">罐</option>
+                                                    <option value="份">份</option>
+                                                    <option value="串">串</option>
+                                                    <option value="颗">颗</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-1">
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-food-item" disabled>
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-outline-success btn-sm" id="add-food-item">
+                                    <i class="fas fa-plus me-1"></i>添加食物
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
@@ -93,6 +120,24 @@
                         </div>
                         
                         <div id="mealAnalysisResults" class="meal-analysis-results">
+                            <!-- 解析出的食物信息卡片 -->
+                            <div class="card shadow-sm mb-3" id="parsedFoodCard" style="display: none;">
+                                <div class="card-header bg-gradient-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-magic me-2"></i>AI识别的食物
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="small text-muted mb-2">
+                                        <strong>原始描述：</strong><span id="originalDescription"></span>
+                                    </div>
+                                    <div class="small">
+                                        <strong>识别出的食物：</strong>
+                                        <div id="parsedFoodsList" class="mt-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- 基础营养数据卡片 -->
                             <div class="card shadow-sm mb-3">
                                 <div class="card-header bg-gradient-success text-white">
@@ -398,6 +443,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     analyzeMealButton.addEventListener('click', function() {
         const mealType = document.getElementById('meal_type').value;
+        const naturalLanguageInput = document.getElementById('food_description').value.trim();
+        
+        // 获取手动输入的食物（如果有）
         const foodNames = Array.from(document.querySelectorAll('input[name="food_name[]"]')).map(input => input.value.trim());
         const foodAmounts = Array.from(document.querySelectorAll('input[name="food_amount[]"]')).map(input => parseFloat(input.value) || 1);
         const foodUnits = Array.from(document.querySelectorAll('select[name="food_unit[]"]')).map(select => select.value);
@@ -408,6 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // 检查是否有自然语言输入或手动输入
         const validFoodItems = [];
         for (let i = 0; i < foodNames.length; i++) {
             if (foodNames[i]) {
@@ -419,8 +468,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        if (validFoodItems.length === 0) {
-            alert('请至少添加一种食物');
+        if (!naturalLanguageInput && validFoodItems.length === 0) {
+            alert('请描述您的饮食或使用手动输入添加食物');
             return;
         }
         
@@ -440,7 +489,8 @@ document.addEventListener('DOMContentLoaded', function() {
             credentials: 'same-origin',
             body: JSON.stringify({
                 meal_type: mealType,
-                food_items: validFoodItems
+                food_items: validFoodItems,
+                natural_language_input: naturalLanguageInput
             })
         })
         .then(response => response.json())
@@ -466,6 +516,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function displayMealAnalysisResults(analysis) {
+        // 显示解析出的食物信息（如果有）
+        if (analysis.parsed_food_info) {
+            const parsedCard = document.getElementById('parsedFoodCard');
+            const originalDesc = document.getElementById('originalDescription');
+            const foodsList = document.getElementById('parsedFoodsList');
+            
+            originalDesc.textContent = analysis.parsed_food_info.original_description;
+            
+            // 显示解析出的食物
+            foodsList.innerHTML = '';
+            analysis.parsed_food_info.parsed_foods.forEach(food => {
+                const foodTag = document.createElement('span');
+                foodTag.className = 'badge bg-light text-dark me-2 mb-1';
+                foodTag.innerHTML = `${food.name} × ${food.amount}${food.unit}`;
+                foodsList.appendChild(foodTag);
+            });
+            
+            parsedCard.style.display = 'block';
+        } else {
+            document.getElementById('parsedFoodCard').style.display = 'none';
+        }
+        
         // 基础营养数据
         const basicNutrition = analysis.basic_nutrition || {};
         document.getElementById('total_calories').textContent = basicNutrition.total_calories || 0;

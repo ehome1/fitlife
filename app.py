@@ -858,9 +858,14 @@ def analyze_meal():
         
         meal_type = data.get('meal_type')
         food_items = data.get('food_items', [])
+        natural_language_input = data.get('natural_language_input', '')
         
-        if not meal_type or not food_items:
-            return jsonify({'error': '缺少必要的饮食信息'}), 400
+        # 检查是否有自然语言输入或手动输入
+        if not meal_type:
+            return jsonify({'error': '请选择餐次类型'}), 400
+        
+        if not food_items and not natural_language_input:
+            return jsonify({'error': '请描述您的饮食或手动添加食物'}), 400
         
         # 获取用户资料
         user_profile = getattr(current_user, 'profile', None)
@@ -884,7 +889,7 @@ def analyze_meal():
             'weight': weight,
             'height': height,
             'fitness_goal': fitness_goal
-        })
+        }, natural_language_input)
         
         return jsonify({
             'success': True,
@@ -902,7 +907,91 @@ def analyze_meal():
             'details': str(e) if app.debug else None
         }), 500
 
-def call_gemini_meal_analysis(meal_type, food_items, user_info):
+def parse_natural_language_food(food_description, meal_type):
+    """使用Gemini AI解析自然语言食物描述"""
+    try:
+        import google.generativeai as genai
+        
+        # 配置Gemini API
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise Exception("Gemini API Key未配置")
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # 构建食物解析prompt
+        parse_prompt = f"""
+请解析以下自然语言描述的食物，提取出具体的食物项目信息。
+
+用户描述: "{food_description}"
+餐次类型: {meal_type}
+
+请按照以下JSON格式返回解析结果（只返回JSON，不要其他文字）：
+
+{{
+    "parsed_foods": [
+        {{
+            "name": "食物名称",
+            "amount": 数量,
+            "unit": "单位",
+            "estimated_weight": "估算重量(克)"
+        }}
+    ],
+    "confidence": "解析置信度(high/medium/low)",
+    "notes": "解析说明或注意事项"
+}}
+
+解析要求：
+1. 准确识别食物名称，使用常见的中文名称
+2. 提取数量信息，如果没有明确数量则估算合理分量
+3. 识别单位，优先使用常见单位（个、片、碗、盒、杯等）
+4. 估算每项食物的大概重量（克）
+5. 如果描述不清楚，在notes中说明
+"""
+        
+        # 调用Gemini API解析
+        response = model.generate_content(parse_prompt)
+        result_text = response.text.strip()
+        
+        # 清理响应文本
+        if result_text.startswith('```json'):
+            result_text = result_text[7:]
+        if result_text.endswith('```'):
+            result_text = result_text[:-3]
+        
+        import json
+        parsed_result = json.loads(result_text)
+        
+        # 转换为标准的food_items格式
+        food_items = []
+        for food in parsed_result.get('parsed_foods', []):
+            food_items.append({
+                'name': food.get('name', ''),
+                'amount': food.get('amount', 1),
+                'unit': food.get('unit', '份'),
+                'estimated_weight': food.get('estimated_weight', '100')
+            })
+        
+        return {
+            'success': True,
+            'food_items': food_items,
+            'confidence': parsed_result.get('confidence', 'medium'),
+            'notes': parsed_result.get('notes', ''),
+            'original_description': food_description
+        }
+        
+    except Exception as e:
+        print(f"自然语言解析错误: {e}")
+        # 返回fallback结果
+        return {
+            'success': False,
+            'error': str(e),
+            'food_items': [],
+            'original_description': food_description
+        }
+
+def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language_input=None):
     """调用Gemini API进行营养分析"""
     try:
         import google.generativeai as genai
@@ -914,6 +1003,15 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info):
         
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # 如果是自然语言输入，先解析提取食物信息
+        if natural_language_input:
+            parse_result = parse_natural_language_food(natural_language_input, meal_type)
+            if parse_result['success']:
+                food_items = parse_result['food_items']
+            else:
+                # 解析失败，使用fallback
+                food_items = [{'name': '未识别食物', 'amount': 1, 'unit': '份'}]
         
         # 构建food_items字符串
         food_list_str = '\n'.join([
@@ -1006,6 +1104,15 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info):
             result_text = result_text[:-3]
         
         result = json.loads(result_text)
+        
+        # 如果是自然语言输入，添加解析信息到结果中
+        if natural_language_input:
+            result['parsed_food_info'] = {
+                'original_description': natural_language_input,
+                'parsed_foods': food_items,
+                'parsing_method': 'ai_natural_language'
+            }
+        
         return result
         
     except Exception as e:
