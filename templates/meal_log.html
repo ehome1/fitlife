@@ -33,7 +33,7 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">
+                        <label for="food_description" class="form-label">
                             <i class="fas fa-apple-alt me-2"></i>描述你的饮食
                         </label>
                         
@@ -61,13 +61,16 @@
                                     <div class="food-item-row mb-2">
                                         <div class="row g-2">
                                             <div class="col-5">
-                                                <input type="text" class="form-control" name="food_name[]" placeholder="食物名称">
+                                                <label class="visually-hidden" for="food_name_0">食物名称</label>
+                                                <input type="text" class="form-control" id="food_name_0" name="food_name[]" placeholder="食物名称">
                                             </div>
                                             <div class="col-3">
-                                                <input type="number" class="form-control" name="food_amount[]" placeholder="数量" min="0.1" step="0.1">
+                                                <label class="visually-hidden" for="food_amount_0">数量</label>
+                                                <input type="number" class="form-control" id="food_amount_0" name="food_amount[]" placeholder="数量" min="0.1" step="0.1">
                                             </div>
                                             <div class="col-3">
-                                                <select class="form-select" name="food_unit[]">
+                                                <label class="visually-hidden" for="food_unit_0">单位</label>
+                                                <select class="form-select" id="food_unit_0" name="food_unit[]">
                                                     <option value="克">克</option>
                                                     <option value="个">个</option>
                                                     <option value="片">片</option>
@@ -86,7 +89,7 @@
                                                 </select>
                                             </div>
                                             <div class="col-1">
-                                                <button type="button" class="btn btn-outline-danger btn-sm remove-food-item" disabled>
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-food-item" disabled aria-label="删除食物项">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
@@ -110,9 +113,9 @@
                     
                     <!-- AI分析结果区域 -->
                     <div class="mb-3" id="mealResults" style="display: none;">
-                        <label class="form-label">
+                        <h6 class="form-label mb-3">
                             <i class="fas fa-robot me-2 text-primary"></i>AI营养分析结果
-                        </label>
+                        </h6>
                         
                         <div id="mealAnalysisLoading" style="display: none;" class="text-center p-4">
                             <div class="spinner-border text-primary me-2"></div>
@@ -395,13 +398,16 @@ document.addEventListener('DOMContentLoaded', function() {
         newRow.innerHTML = `
             <div class="row g-2">
                 <div class="col-5">
-                    <input type="text" class="form-control" name="food_name[]" placeholder="食物名称" required>
+                    <label class="visually-hidden" for="food_name_${foodItemIndex}">食物名称</label>
+                    <input type="text" class="form-control" id="food_name_${foodItemIndex}" name="food_name[]" placeholder="食物名称" required>
                 </div>
                 <div class="col-3">
-                    <input type="number" class="form-control" name="food_amount[]" placeholder="数量" min="0.1" step="0.1" required>
+                    <label class="visually-hidden" for="food_amount_${foodItemIndex}">数量</label>
+                    <input type="number" class="form-control" id="food_amount_${foodItemIndex}" name="food_amount[]" placeholder="数量" min="0.1" step="0.1" required>
                 </div>
                 <div class="col-3">
-                    <select class="form-select" name="food_unit[]" required>
+                    <label class="visually-hidden" for="food_unit_${foodItemIndex}">单位</label>
+                    <select class="form-select" id="food_unit_${foodItemIndex}" name="food_unit[]" required>
                         <option value="克">克</option>
                         <option value="个">个</option>
                         <option value="片">片</option>
@@ -415,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </select>
                 </div>
                 <div class="col-1">
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-food-item">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-food-item" aria-label="删除食物项">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
