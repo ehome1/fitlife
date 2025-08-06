@@ -600,11 +600,55 @@ def meal_log():
                 flash('保存失败，请稍后重试')
                 return redirect(url_for('meal_log'))
         
-        # 获取最近的饮食记录
+        # 获取最近的饮食记录并按餐次分组
         try:
-            recent_meals = MealLog.query.filter_by(
+            # 获取所有饮食记录
+            all_meals = MealLog.query.filter_by(
                 user_id=current_user.id
-            ).order_by(MealLog.created_at.desc()).limit(10).all()
+            ).order_by(MealLog.date.desc(), MealLog.created_at.desc()).all()
+            
+            # 按日期和餐次类型分组合并
+            grouped_meals = {}
+            for meal in all_meals:
+                # 创建分组键：日期-餐次类型
+                key = f"{meal.date}_{meal.meal_type}"
+                
+                if key not in grouped_meals:
+                    grouped_meals[key] = {
+                        'date': meal.date,
+                        'meal_type': meal.meal_type,
+                        'meal_type_display': meal.meal_type_display,
+                        'food_items': [],
+                        'total_calories': 0,
+                        'created_at': meal.created_at,
+                        'notes': meal.notes or ''
+                    }
+                
+                # 添加食物项
+                if meal.food_name:
+                    grouped_meals[key]['food_items'].append({
+                        'name': meal.food_name,
+                        'quantity': meal.quantity or 1,
+                        'unit': '份'
+                    })
+                    grouped_meals[key]['total_calories'] += meal.calories or 0
+            
+            # 转换为列表并限制数量
+            recent_meals = []
+            for key in sorted(grouped_meals.keys(), key=lambda x: grouped_meals[x]['created_at'], reverse=True)[:10]:
+                meal_group = grouped_meals[key]
+                # 生成食物摘要
+                food_names = [item['name'] for item in meal_group['food_items']]
+                meal_group['food_items_summary'] = '、'.join(food_names[:3])  # 最多显示3种食物
+                if len(food_names) > 3:
+                    meal_group['food_items_summary'] += f"等{len(food_names)}种食物"
+                
+                # 日期显示格式
+                meal_group['date_display'] = meal_group['date'].strftime('%m-%d')
+                meal_group['meal_score'] = 0  # 默认评分，可以后续添加计算逻辑
+                
+                recent_meals.append(meal_group)
+                
         except Exception as e:
             logger.error(f"获取饮食记录失败: {e}")
             recent_meals = []
@@ -773,8 +817,10 @@ def analyze_exercise():
         else:
             bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
         
-        # 计算健身得分 (简化版本)
-        fitness_score = min(100, int((calories_burned / 10) + (duration / 2)))
+        # 计算健身得分 (满分10分)
+        # 基于卡路里消耗和时长，标准化到10分制
+        base_score = (calories_burned / 50) + (duration / 15)  # 调整权重
+        fitness_score = min(10, max(1, int(base_score)))
         
         # 生成分析结果
         analysis_result = {

@@ -380,6 +380,117 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('meal_date').value = today;
     
+    const form = document.getElementById('mealForm');
+    const submitButton = form.querySelector('button[type="submit"]');
+    
+    // 优化表单提交体验 - 立即反馈
+    form.addEventListener('submit', function(e) {
+        // 立即显示提交状态
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>正在保存...';
+        
+        // 立即添加临时记录到界面（乐观更新）
+        const mealList = document.querySelector('.meal-list');
+        const noRecords = mealList ? null : document.querySelector('.text-center.py-4');
+        
+        const mealType = document.getElementById('meal_type').value;
+        const foodDescription = document.getElementById('food_description').value.trim();
+        
+        if (mealType && (foodDescription || hasManualInput())) {
+            const newMeal = createTempMealItem({
+                meal_type: getMealTypeDisplay(mealType),
+                food_description: foodDescription || getManualInputSummary(),
+                date: new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+            });
+            
+            if (noRecords) {
+                // 如果没有记录，创建列表并添加
+                noRecords.style.display = 'none';
+                const mealListDiv = document.createElement('div');
+                mealListDiv.className = 'meal-list';
+                mealListDiv.appendChild(newMeal);
+                noRecords.parentNode.insertBefore(mealListDiv, noRecords);
+            } else if (mealList) {
+                // 如果有记录，插入到顶部
+                mealList.insertBefore(newMeal, mealList.firstChild);
+            }
+            
+            // 显示成功提示
+            showToast('饮食记录正在保存中...', 'info');
+        }
+        
+        // 不阻止表单提交，让后端处理
+    });
+    
+    // 检查是否有手动输入
+    function hasManualInput() {
+        const foodNames = Array.from(document.querySelectorAll('input[name="food_name[]"]'));
+        return foodNames.some(input => input.value.trim());
+    }
+    
+    // 获取手动输入摘要
+    function getManualInputSummary() {
+        const foodNames = Array.from(document.querySelectorAll('input[name="food_name[]"]'))
+            .map(input => input.value.trim())
+            .filter(name => name);
+        return foodNames.slice(0, 3).join('、') + (foodNames.length > 3 ? `等${foodNames.length}种食物` : '');
+    }
+    
+    // 获取餐次类型显示名称
+    function getMealTypeDisplay(mealType) {
+        const typeMap = {
+            'breakfast': '早餐',
+            'lunch': '午餐',
+            'dinner': '晚餐',
+            'snack': '加餐'
+        };
+        return typeMap[mealType] || mealType;
+    }
+    
+    // 创建临时饮食记录项
+    function createTempMealItem(data) {
+        const div = document.createElement('div');
+        div.className = 'meal-item mb-3 p-3 border rounded temp-item';
+        div.style.opacity = '0.7';
+        div.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">${data.meal_type} <small class="text-muted">(保存中...)</small></h6>
+                    <div class="text-muted small mb-2">
+                        ${data.food_description}
+                    </div>
+                </div>
+                <div class="text-end ms-3">
+                    <div class="fw-bold text-muted fs-6">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <small class="text-muted">分析中</small>
+                    <div class="small text-muted">${data.date}</div>
+                </div>
+            </div>
+        `;
+        return div;
+    }
+    
+    // 简单的Toast通知
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : type === 'info' ? 'info' : 'warning'} position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'info' ? 'info-circle' : 'exclamation-triangle'} me-2"></i>
+            ${message}
+        `;
+        document.body.appendChild(toast);
+        
+        // 3秒后自动消失
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }
+    
     // 动态添加食物项功能
     let foodItemIndex = 1;
     
