@@ -25,9 +25,29 @@
 - [x] **功能测试** - test_meal_system.py 验证脚本
 - [x] **代码提交** - 所有更改已提交到git
 
-## 🔧 部署步骤
+## 🔧 线上问题诊断和修复步骤
 
-### 1. 环境变量检查
+### 🚨 如果遇到500错误，按以下步骤操作：
+
+### 1. 系统诊断
+访问诊断端点查看具体问题：
+```
+https://your-domain.com/diagnose-meal-system-secret-67890
+```
+
+### 2. 数据库初始化
+如果诊断显示表不存在，访问初始化端点：
+```
+https://your-domain.com/init-database-secret-endpoint-12345
+```
+
+### 3. 验证修复结果
+再次访问诊断端点确认问题已解决：
+```
+https://your-domain.com/diagnose-meal-system-secret-67890
+```
+
+### 4. 环境变量检查
 确保以下环境变量在生产环境中正确设置：
 ```bash
 DATABASE_URL=postgresql://...
@@ -35,19 +55,12 @@ SECRET_KEY=your-production-secret-key
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
-### 2. 数据库初始化
-在生产环境中运行：
-```bash
-python init_production_db.py
-```
+### 5. 功能测试
+- 访问 `/meal-log` 页面
+- 测试添加食物项功能
+- 测试AI营养分析功能
 
-### 3. 功能验证
-部署后运行验证脚本：
-```bash
-python test_meal_system.py
-```
-
-### 4. 手动测试清单
+## 📋 完整手动测试清单
 - [ ] **访问饮食记录页面** - 确保 /meal-log 可以访问
 - [ ] **动态表单** - 测试添加/删除食物功能
 - [ ] **AI分析** - 测试营养分析功能
@@ -120,16 +133,34 @@ const testMeal = {
 
 ## 🚨 故障排除
 
-### 常见问题
-1. **f-string语法错误** - 已修复，JSON模板从f-string中分离
-2. **导航菜单未启用** - 已修复，base.html已更新
-3. **API调用失败** - 有fallback机制，会返回估算数据
-4. **模板加载错误** - 确保meal_log.html存在于templates目录
+### 线上500错误修复流程
+1. **立即诊断** - 访问 `/diagnose-meal-system-secret-67890` 查看具体问题
+2. **数据库问题** - 如果表不存在，访问 `/init-database-secret-endpoint-12345` 
+3. **验证修复** - 再次访问诊断端点确认问题解决
+4. **测试功能** - 手动测试饮食记录功能
 
-### 日志检查
-- 应用启动日志应显示 "数据库创建成功！"
-- API调用日志应显示成功的POST请求
-- 错误日志中不应有f-string相关错误
+### 常见问题及解决方案
+1. **MealLog表不存在** 
+   - ✅ 已修复：meal_log路由会自动创建表
+   - 🔧 备用方案：使用初始化端点手动创建
+
+2. **JSON字段兼容性问题**
+   - ✅ 已修复：添加了兼容性处理和错误回退
+   - 🔧 备用方案：系统会自动处理数据类型转换
+
+3. **f-string语法错误** 
+   - ✅ 已修复：JSON模板从f-string中分离
+
+4. **导航菜单未启用** 
+   - ✅ 已修复：base.html已更新
+
+5. **API调用失败** 
+   - ✅ 有fallback机制，会返回估算数据
+
+### 实时监控
+- 系统现在会自动记录详细错误日志
+- 每次访问会自动检查和修复常见问题
+- 诊断端点提供实时系统状态检查
 
 ## ✅ 系统状态
 **所有饮食记录功能已完成实现并准备生产部署**
