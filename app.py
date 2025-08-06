@@ -906,6 +906,45 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info):
         meal_type_cn = meal_type_map.get(meal_type, meal_type)
         
         # 构建详细的营养分析prompt
+        json_template = '''
+{
+    "basic_nutrition": {
+        "total_calories": 数值,
+        "protein": 数值,
+        "carbohydrates": 数值, 
+        "fat": 数值,
+        "fiber": 数值,
+        "sugar": 数值
+    },
+    "nutrition_breakdown": {
+        "protein_percentage": 数值,
+        "carbs_percentage": 数值,
+        "fat_percentage": 数值
+    },
+    "meal_analysis": {
+        "meal_score": 数值,
+        "balance_rating": "营养均衡评价",
+        "meal_type_suitability": "对该餐次的适合度评价",
+        "portion_assessment": "分量评估"
+    },
+    "detailed_analysis": {
+        "strengths": ["营养优点列表"],
+        "areas_for_improvement": ["改进建议列表"]
+    },
+    "personalized_feedback": {
+        "calorie_assessment": "热量评估",
+        "macro_balance": "三大营养素平衡评价",
+        "health_impact": "健康影响评估"
+    },
+    "recommendations": {
+        "next_meal_suggestion": "下一餐建议",
+        "daily_nutrition_tip": "今日营养贴士",
+        "hydration_reminder": "补水提醒"
+    },
+    "motivation_message": "激励话语"
+}
+'''
+        
         prompt = f"""
 作为专业营养师，请分析以下饮食信息并返回详细的营养分析结果。
 
@@ -923,42 +962,7 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info):
 
 请按照以下JSON格式返回营养分析结果（只返回JSON，不要其他文字）：
 
-{{
-    "basic_nutrition": {{
-        "total_calories": 数值,
-        "protein": 数值,
-        "carbohydrates": 数值, 
-        "fat": 数值,
-        "fiber": 数值,
-        "sugar": 数值
-    }},
-    "nutrition_breakdown": {{
-        "protein_percentage": 数值,
-        "carbs_percentage": 数值,
-        "fat_percentage": 数值
-    }},
-    "meal_analysis": {{
-        "meal_score": 数值,
-        "balance_rating": "营养均衡评价",
-        "meal_type_suitability": "对该餐次的适合度评价",
-        "portion_assessment": "分量评估"
-    }},
-    "detailed_analysis": {{
-        "strengths": ["营养优点列表"],
-        "areas_for_improvement": ["改进建议列表"]
-    }},
-    "personalized_feedback": {{
-        "calorie_assessment": "热量评估",
-        "macro_balance": "三大营养素平衡评价",
-        "health_impact": "健康影响评估"
-    }},
-    "recommendations": {{
-        "next_meal_suggestion": "下一餐建议",
-        "daily_nutrition_tip": "今日营养贴士",
-        "hydration_reminder": "补水提醒"
-    }},
-    "motivation_message": "激励话语"
-}}
+{json_template}
 
 请基于营养学专业知识进行准确分析，确保数据真实可靠。
 """
