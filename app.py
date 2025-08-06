@@ -1002,6 +1002,9 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
             model = get_gemini_model()
         except Exception as e:
             logger.warning(f"Gemini API不可用，使用fallback: {e}")
+            # 如果有自然语言输入但没有Gemini API，创建简单的食物项
+            if natural_language_input and not food_items:
+                food_items = [{'name': natural_language_input[:50], 'amount': 1, 'unit': '份'}]
             return generate_fallback_nutrition_analysis(food_items, meal_type)
         
         # 如果是自然语言输入，先解析提取食物信息
