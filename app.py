@@ -1046,6 +1046,43 @@ if os.getenv('VERCEL'):
         except Exception as e:
             print(f"⚠️ Vercel环境数据库初始化失败: {e}")
 
+# 临时数据库初始化端点（生产环境使用后应删除）
+@app.route('/init-database-secret-endpoint-12345')
+def init_database_endpoint():
+    """临时数据库初始化端点 - 仅用于生产环境初始化"""
+    try:
+        # 检查是否为生产环境
+        if not (os.getenv('VERCEL') or os.getenv('DATABASE_URL')):
+            return jsonify({"error": "仅限生产环境使用"}), 403
+        
+        # 创建所有表
+        db.create_all()
+        
+        # 验证表结构
+        tables_status = {}
+        tables = ['user', 'user_profile', 'fitness_goal', 'exercise_log', 'meal_log']
+        
+        for table in tables:
+            try:
+                result = db.session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+                count = result.scalar()
+                tables_status[table] = f"✅ 成功 ({count} 条记录)"
+            except Exception as e:
+                tables_status[table] = f"❌ 错误: {str(e)}"
+        
+        return jsonify({
+            "status": "success",
+            "message": "数据库初始化完成",
+            "tables": tables_status,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error", 
+            "message": f"数据库初始化失败: {str(e)}"
+        }), 500
+
 # 本地开发环境初始化
 if __name__ == '__main__':
     with app.app_context():
