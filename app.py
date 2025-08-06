@@ -1048,6 +1048,136 @@ def analyze_meal():
             'details': str(e) if app.debug else None
         }), 500
 
+@app.route('/progress')
+@login_required
+def progress():
+    """进度分析页面"""
+    try:
+        # 获取时间范围参数（默认30天）
+        days = request.args.get('days', 30, type=int)
+        end_date = date.today()
+        start_date = end_date - timedelta(days=days)
+        
+        # 获取运动数据
+        exercises_data = get_exercises_data(current_user.id, start_date, end_date)
+        
+        # 获取饮食数据
+        meals_data = get_meals_data(current_user.id, start_date, end_date)
+        
+        # 计算统计数据
+        stats = calculate_progress_stats(exercises_data, meals_data)
+        
+        return render_template('progress.html', 
+                             exercises_data=exercises_data,
+                             meals_data=meals_data,
+                             stats=stats)
+                             
+    except Exception as e:
+        logger.error(f"进度分析页面错误: {e}")
+        flash('页面加载失败，请稍后重试')
+        return redirect(url_for('dashboard'))
+
+def get_exercises_data(user_id, start_date, end_date):
+    """获取用户运动数据"""
+    try:
+        exercises = ExerciseLog.query.filter(
+            ExerciseLog.user_id == user_id,
+            ExerciseLog.date >= start_date,
+            ExerciseLog.date <= end_date
+        ).order_by(ExerciseLog.date.desc()).all()
+        
+        return [{
+            'date': exercise.date.isoformat(),
+            'exercise_type': exercise.exercise_type,
+            'exercise_name': exercise.exercise_name,
+            'duration': exercise.duration,
+            'calories_burned': exercise.calories_burned or 0,
+            'intensity': exercise.intensity or 'medium'
+        } for exercise in exercises]
+        
+    except Exception as e:
+        logger.error(f"获取运动数据失败: {e}")
+        return []
+
+def get_meals_data(user_id, start_date, end_date):
+    """获取用户饮食数据"""
+    try:
+        meals = MealLog.query.filter(
+            MealLog.user_id == user_id,
+            MealLog.date >= start_date,
+            MealLog.date <= end_date
+        ).order_by(MealLog.date.desc()).all()
+        
+        return [{
+            'date': meal.date.isoformat(),
+            'meal_type': meal.meal_type,
+            'food_name': meal.food_name,
+            'calories': meal.calories or 0,
+            'protein': meal.protein or 0,
+            'carbs': meal.carbs or 0,
+            'fat': meal.fat or 0
+        } for meal in meals]
+        
+    except Exception as e:
+        logger.error(f"获取饮食数据失败: {e}")
+        return []
+
+def calculate_progress_stats(exercises_data, meals_data):
+    """计算进度统计数据"""
+    try:
+        # 运动统计
+        total_burned = sum(ex.get('calories_burned', 0) for ex in exercises_data)
+        total_minutes = sum(ex.get('duration', 0) for ex in exercises_data)
+        exercise_days = len(set(ex.get('date') for ex in exercises_data))
+        
+        # 饮食统计
+        total_consumed = sum(meal.get('calories', 0) for meal in meals_data)
+        total_protein = sum(meal.get('protein', 0) for meal in meals_data)
+        total_carbs = sum(meal.get('carbs', 0) for meal in meals_data)
+        total_fat = sum(meal.get('fat', 0) for meal in meals_data)
+        
+        # 强度分布统计
+        intensity_count = {'low': 0, 'medium': 0, 'high': 0}
+        for ex in exercises_data:
+            intensity = ex.get('intensity', 'medium')
+            if intensity in intensity_count:
+                intensity_count[intensity] += 1
+        
+        # 运动类型统计
+        type_duration = {}
+        for ex in exercises_data:
+            ex_type = ex.get('exercise_type', 'unknown')
+            duration = ex.get('duration', 0)
+            type_duration[ex_type] = type_duration.get(ex_type, 0) + duration
+        
+        return {
+            'total_burned': total_burned,
+            'total_consumed': total_consumed,
+            'exercise_days': exercise_days,
+            'total_minutes': total_minutes,
+            'total_protein': total_protein,
+            'total_carbs': total_carbs,
+            'total_fat': total_fat,
+            'intensity_distribution': intensity_count,
+            'type_duration': type_duration,
+            'calorie_balance': total_consumed - total_burned
+        }
+        
+    except Exception as e:
+        logger.error(f"统计计算失败: {e}")
+        return {
+            'total_burned': 0,
+            'total_consumed': 0,
+            'exercise_days': 0,
+            'total_minutes': 0,
+            'total_protein': 0,
+            'total_carbs': 0,
+            'total_fat': 0,
+            'intensity_distribution': {'low': 0, 'medium': 0, 'high': 0},
+            'type_duration': {},
+            'calorie_balance': 0
+        }
+
 def get_gemini_model():
     """获取配置好的Gemini模型"""
     try:
