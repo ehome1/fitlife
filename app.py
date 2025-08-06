@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 import os
 import json
 import google.generativeai as genai
@@ -444,57 +444,82 @@ def exercise_log():
 @login_required
 def meal_log():
     """饮食记录页面"""
-    if request.method == 'POST':
-        meal_date_str = request.form['meal_date']
-        meal_type = request.form['meal_type']
-        notes = request.form.get('notes', '')
+    try:
+        # 确保MealLog表存在
+        db.create_all()
         
-        # 解析日期
+        if request.method == 'POST':
+            meal_date_str = request.form['meal_date']
+            meal_type = request.form['meal_type']
+            notes = request.form.get('notes', '')
+            
+            # 解析日期
+            try:
+                meal_date = datetime.strptime(meal_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                meal_date = datetime.now(timezone.utc).date()
+            
+            # 处理食物列表数据
+            food_items = []
+            food_names = request.form.getlist('food_name[]')
+            food_amounts = request.form.getlist('food_amount[]')
+            food_units = request.form.getlist('food_unit[]')
+            
+            for i in range(len(food_names)):
+                if food_names[i].strip():  # 只添加非空的食物项
+                    try:
+                        amount = float(food_amounts[i]) if food_amounts[i] else 1
+                    except (ValueError, IndexError):
+                        amount = 1
+                    
+                    food_items.append({
+                        'name': food_names[i].strip(),
+                        'amount': amount,
+                        'unit': food_units[i] if i < len(food_units) else '个'
+                    })
+            
+            if not food_items:
+                flash('请至少添加一种食物！')
+                return redirect(url_for('meal_log'))
+            
+            # 创建饮食记录（暂时不计算卡路里，等AI分析后更新）
+            try:
+                meal_log_entry = MealLog(
+                    user_id=current_user.id,
+                    meal_date=meal_date,
+                    meal_type=meal_type,
+                    food_items=food_items,
+                    total_calories=0,  # 初始值，AI分析后更新
+                    notes=notes
+                )
+                
+                db.session.add(meal_log_entry)
+                db.session.commit()
+                
+                flash('饮食记录已保存！建议使用AI分析获取详细营养信息')
+                return redirect(url_for('meal_log'))
+                
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"保存饮食记录失败: {e}")
+                flash('保存失败，请稍后重试')
+                return redirect(url_for('meal_log'))
+        
+        # 获取最近的饮食记录
         try:
-            meal_date = datetime.strptime(meal_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            meal_date = datetime.now(timezone.utc).date()
+            recent_meals = MealLog.query.filter_by(
+                user_id=current_user.id
+            ).order_by(MealLog.created_at.desc()).limit(10).all()
+        except Exception as e:
+            logger.error(f"获取饮食记录失败: {e}")
+            recent_meals = []
         
-        # 处理食物列表数据
-        food_items = []
-        food_names = request.form.getlist('food_name[]')
-        food_amounts = request.form.getlist('food_amount[]')
-        food_units = request.form.getlist('food_unit[]')
+        return render_template('meal_log.html', recent_meals=recent_meals)
         
-        for i in range(len(food_names)):
-            if food_names[i].strip():  # 只添加非空的食物项
-                food_items.append({
-                    'name': food_names[i].strip(),
-                    'amount': float(food_amounts[i]) if food_amounts[i] else 1,
-                    'unit': food_units[i]
-                })
-        
-        if not food_items:
-            flash('请至少添加一种食物！')
-            return redirect(url_for('meal_log'))
-        
-        # 创建饮食记录（暂时不计算卡路里，等AI分析后更新）
-        meal_log_entry = MealLog(
-            user_id=current_user.id,
-            meal_date=meal_date,
-            meal_type=meal_type,
-            food_items=food_items,
-            total_calories=0,  # 初始值，AI分析后更新
-            notes=notes
-        )
-        
-        db.session.add(meal_log_entry)
-        db.session.commit()
-        
-        flash('饮食记录已保存！建议使用AI分析获取详细营养信息')
-        return redirect(url_for('meal_log'))
-    
-    # 获取最近的饮食记录
-    recent_meals = MealLog.query.filter_by(
-        user_id=current_user.id
-    ).order_by(MealLog.created_at.desc()).limit(10).all()
-    
-    return render_template('meal_log.html', recent_meals=recent_meals)
+    except Exception as e:
+        logger.error(f"饮食记录页面错误: {e}")
+        flash('页面加载失败，请稍后重试')
+        return redirect(url_for('dashboard'))
 
 def estimate_calories_burned(exercise_type, exercise_name, duration, weight):
     """估算消耗的卡路里"""
@@ -1082,6 +1107,117 @@ def init_database_endpoint():
             "status": "error", 
             "message": f"数据库初始化失败: {str(e)}"
         }), 500
+
+# 诊断端点 - 专门用于排查线上问题
+@app.route('/diagnose-meal-system-secret-67890')
+def diagnose_meal_system():
+    """诊断饮食记录系统状态"""
+    try:
+        diagnosis = {}
+        
+        # 1. 检查数据库连接
+        try:
+            db.session.execute(text("SELECT 1"))
+            diagnosis['database_connection'] = "✅ 连接正常"
+        except Exception as e:
+            diagnosis['database_connection'] = f"❌ 连接失败: {str(e)}"
+        
+        # 2. 检查MealLog表
+        try:
+            # 尝试创建表
+            db.create_all()
+            
+            # 检查表结构
+            result = db.session.execute(text("SELECT COUNT(*) FROM meal_log"))
+            count = result.scalar()
+            diagnosis['meal_log_table'] = f"✅ 表存在 ({count} 条记录)"
+            
+            # 检查表字段
+            result = db.session.execute(text("""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = 'meal_log'
+                ORDER BY ordinal_position
+            """))
+            columns = result.fetchall()
+            diagnosis['meal_log_columns'] = [f"{col[0]} ({col[1]})" for col in columns]
+            
+        except Exception as e:
+            diagnosis['meal_log_table'] = f"❌ 表问题: {str(e)}"
+        
+        # 3. 检查模板文件
+        try:
+            import os
+            template_path = 'templates/meal_log.html'
+            if os.path.exists(template_path):
+                diagnosis['meal_log_template'] = "✅ 模板存在"
+            else:
+                diagnosis['meal_log_template'] = "❌ 模板缺失"
+        except Exception as e:
+            diagnosis['meal_log_template'] = f"❌ 模板检查失败: {str(e)}"
+        
+        # 4. 检查路由
+        try:
+            from flask import url_for
+            meal_log_url = url_for('meal_log')
+            diagnosis['meal_log_route'] = f"✅ 路由正常: {meal_log_url}"
+        except Exception as e:
+            diagnosis['meal_log_route'] = f"❌ 路由问题: {str(e)}"
+        
+        # 5. 测试MealLog模型
+        try:
+            test_meal = MealLog(
+                user_id=1,
+                meal_date=date.today(),
+                meal_type='breakfast',
+                food_items=[{"name": "测试", "amount": 1, "unit": "个"}],
+                total_calories=100
+            )
+            # 不实际保存，只测试创建
+            diagnosis['meal_log_model'] = "✅ 模型正常"
+        except Exception as e:
+            diagnosis['meal_log_model'] = f"❌ 模型问题: {str(e)}"
+        
+        # 6. 环境变量检查
+        env_vars = {}
+        for var in ['DATABASE_URL', 'SECRET_KEY', 'GEMINI_API_KEY']:
+            env_vars[var] = "✅ 已设置" if os.getenv(var) else "❌ 未设置"
+        diagnosis['environment_variables'] = env_vars
+        
+        return jsonify({
+            "status": "success",
+            "diagnosis": diagnosis,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "recommendations": get_fix_recommendations(diagnosis)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"诊断失败: {str(e)}",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }), 500
+
+def get_fix_recommendations(diagnosis):
+    """根据诊断结果生成修复建议"""
+    recommendations = []
+    
+    if "❌" in diagnosis.get('database_connection', ''):
+        recommendations.append("🔧 检查DATABASE_URL环境变量设置")
+    
+    if "❌" in diagnosis.get('meal_log_table', ''):
+        recommendations.append("🔧 运行数据库初始化: 访问 /init-database-secret-endpoint-12345")
+    
+    if "❌" in diagnosis.get('meal_log_template', ''):
+        recommendations.append("🔧 确保templates/meal_log.html文件存在")
+    
+    if "❌" in diagnosis.get('meal_log_model', ''):
+        recommendations.append("🔧 检查MealLog模型定义或JSON字段兼容性")
+    
+    if not recommendations:
+        recommendations.append("✅ 系统看起来正常，可能是临时网络问题")
+    
+    return recommendations
 
 # 本地开发环境初始化
 if __name__ == '__main__':
