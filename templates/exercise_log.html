@@ -479,10 +479,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function displayExerciseAnalysisResults(analysis) {
-        // 基础运动数据
-        document.getElementById('calories_burned').textContent = analysis.calories_burned || 0;
-        document.getElementById('intensity_display').textContent = analysis.intensity_level || '中等强度';
-        document.getElementById('fitness_score').textContent = analysis.fitness_score || 0;
+        // 基础运动数据 - 适配新的AI数据结构
+        const basicMetrics = analysis.basic_metrics || analysis; // 兼容新旧数据格式
+        document.getElementById('calories_burned').textContent = basicMetrics.calories_burned || 0;
+        document.getElementById('intensity_display').textContent = basicMetrics.intensity_level || '中等强度';
+        document.getElementById('fitness_score').textContent = basicMetrics.fitness_score || 0;
         
         // 运动分析数据
         if (analysis.exercise_analysis) {
