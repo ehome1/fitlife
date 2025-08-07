@@ -1078,14 +1078,16 @@ def get_exercises_data(user_id, start_date, end_date):
 def get_meals_data(user_id, start_date, end_date):
     """获取用户饮食数据"""
     try:
+        # 使用created_at字段进行查询以保持与Dashboard一致
+        from sqlalchemy import func
         meals = MealLog.query.filter(
             MealLog.user_id == user_id,
-            MealLog.date >= start_date,
-            MealLog.date <= end_date
-        ).order_by(MealLog.date.desc()).all()
+            func.date(MealLog.created_at) >= start_date,
+            func.date(MealLog.created_at) <= end_date
+        ).order_by(MealLog.created_at.desc()).all()
         
         return [{
-            'date': meal.date.isoformat(),
+            'date': meal.created_at.date().isoformat(),  # 使用created_at的日期部分
             'meal_type': meal.meal_type,
             'food_name': meal.food_name,
             'calories': meal.calories or 0,
