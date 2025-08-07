@@ -1194,7 +1194,7 @@ def get_gemini_model():
             raise Exception("Gemini API Key未配置")
         
         genai.configure(api_key=api_key)
-        return genai.GenerativeModel('gemini-1.5-flash')
+        return genai.GenerativeModel('gemini-2.5-flash')
     except Exception as e:
         logger.warning(f"Gemini配置错误: {e}")
         raise
