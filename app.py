@@ -813,45 +813,16 @@ def analyze_exercise():
             age = user_profile.age or 30
             gender = user_profile.gender or '未知'
         
-        # 计算卡路里消耗
-        calories_burned, intensity = estimate_calories_burned(exercise_type, exercise_name, duration, weight)
-        
-        # 计算BMR
-        if gender == '男':
-            bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age)
-        else:
-            bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
-        
-        # 计算健身得分 (满分10分)
-        # 基于卡路里消耗和时长，标准化到10分制
-        base_score = (calories_burned / 50) + (duration / 15)  # 调整权重
-        fitness_score = min(10, max(1, int(base_score)))
-        
-        # 生成分析结果
-        analysis_result = {
-            'calories_burned': calories_burned,
-            'intensity_level': intensity,
-            'fitness_score': fitness_score,
-            'exercise_analysis': {
-                'heart_rate_zone': get_heart_rate_zone(intensity),
-                'energy_system': get_energy_system(exercise_type, duration),
-                'primary_benefits': get_primary_benefits(exercise_type),
-                'muscle_groups': get_muscle_groups(exercise_type)
-            },
-            'personalized_feedback': {
-                'suitable_level': '适合' if intensity != 'high' or age < 50 else '需谨慎',
-                'age_considerations': get_age_considerations(age, intensity),
-                'fitness_level_match': '与活动水平匹配'
-            },
-            'recommendations': {
-                'next_workout': get_next_workout_suggestion(exercise_type),
-                'intensity_adjustment': get_intensity_adjustment(intensity),
-                'duration_suggestion': get_duration_suggestion(duration),
-                'recovery_advice': get_recovery_advice(intensity, duration)
-            },
-            'motivation_message': get_motivation_message(fitness_score),
-            'health_alerts': get_health_alerts(intensity, duration, age)
-        }
+        # 调用Gemini AI进行运动分析
+        analysis_result = call_gemini_exercise_analysis(
+            exercise_type, exercise_name, duration, {
+                'age': age,
+                'gender': gender,
+                'weight': weight,
+                'height': height,
+                'activity_level': getattr(user_profile, 'activity_level', 'moderately_active')
+            }
+        )
         
         return jsonify({
             'success': True,
@@ -1408,6 +1379,164 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
         print(f"Gemini API调用错误: {e}")
         # 返回模拟数据作为fallback
         return generate_fallback_nutrition_analysis(food_items, meal_type)
+
+def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_info):
+    """调用Gemini AI进行运动分析"""
+    try:
+        # 尝试获取Gemini模型
+        try:
+            model = get_gemini_model()
+        except Exception as e:
+            logger.warning(f"Gemini API不可用，使用fallback: {e}")
+            return generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info)
+        
+        # 计算BMR
+        if user_info['gender'] == '男' or user_info['gender'] == 'male':
+            bmr = 88.362 + (13.397 * user_info['weight']) + (4.799 * user_info['height']) - (5.677 * user_info['age'])
+        else:
+            bmr = 447.593 + (9.247 * user_info['weight']) + (3.098 * user_info['height']) - (4.330 * user_info['age'])
+        
+        # 运动类型中文映射
+        exercise_type_cn = {
+            'cardio': '有氧运动',
+            'strength': '力量训练', 
+            'flexibility': '柔韧性训练',
+            'balance': '平衡训练',
+            'sports': '体育运动'
+        }.get(exercise_type, exercise_type)
+        
+        # 活动水平中文映射
+        activity_level_cn = {
+            'sedentary': '久坐',
+            'lightly_active': '轻度活跃',
+            'moderately_active': '中等活跃',
+            'very_active': '高度活跃'
+        }.get(user_info['activity_level'], user_info['activity_level'])
+        
+        # JSON模板
+        json_template = '''{
+    "basic_metrics": {
+        "calories_burned": 0,
+        "intensity_level": "中等",
+        "fitness_score": 8.0,
+        "met_value": 0.0
+    },
+    "exercise_analysis": {
+        "heart_rate_zone": "有氧区间",
+        "energy_system": "有氧系统",
+        "primary_benefits": ["心血管健康", "耐力提升"],
+        "muscle_groups": ["腿部", "核心"],
+        "technique_points": ["保持姿势正确", "控制节奏"]
+    },
+    "personalized_feedback": {
+        "suitable_level": "适合",
+        "age_considerations": "适合您的年龄段",
+        "fitness_level_match": "与活动水平匹配",
+        "improvement_areas": ["可以增加强度", "注意拉伸"]
+    },
+    "recommendations": {
+        "next_workout": "建议下次运动",
+        "intensity_adjustment": "强度建议",
+        "duration_suggestion": "时长建议",
+        "recovery_advice": "恢复建议",
+        "frequency_recommendation": "频率建议"
+    },
+    "health_insights": {
+        "calorie_burn_efficiency": "燃脂效果评估",
+        "cardiovascular_benefit": "心血管益处",
+        "strength_development": "力量发展",
+        "injury_risk": "受伤风险评估"
+    },
+    "motivation_message": "激励话语"
+}'''
+        
+        prompt = f"""
+作为专业的运动健身教练和运动生理学专家，请分析以下运动信息并提供专业的运动分析。
+
+用户信息：
+- 年龄：{user_info['age']}岁
+- 性别：{user_info['gender']}
+- 体重：{user_info['weight']}kg
+- 身高：{user_info['height']}cm
+- 活动水平：{activity_level_cn}
+- 基础代谢率：{bmr:.0f} kcal/天
+
+运动信息：
+- 运动类型：{exercise_type_cn}
+- 具体运动：{exercise_name}
+- 运动时长：{duration}分钟
+
+请按照以下JSON格式返回专业的运动分析结果（只返回JSON，不要其他文字）：
+
+{json_template}
+
+请基于运动生理学和健身专业知识进行准确分析，确保数据科学可靠，fitness_score满分10分。
+"""
+        
+        # 调用Gemini API
+        response = model.generate_content(prompt)
+        
+        # 解析JSON响应
+        import json
+        result_text = response.text.strip()
+        
+        # 清理响应文本
+        if result_text.startswith('```json'):
+            result_text = result_text[7:]
+        if result_text.endswith('```'):
+            result_text = result_text[:-3]
+        
+        result = json.loads(result_text)
+        return result
+        
+    except Exception as e:
+        print(f"Gemini运动分析错误: {e}")
+        return generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info)
+
+def generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info):
+    """生成运动分析的fallback数据"""
+    # 计算卡路里消耗（传统方法）
+    calories_burned, intensity = estimate_calories_burned(exercise_type, exercise_name, duration, user_info['weight'])
+    
+    # 计算健身得分 (满分10分)
+    base_score = (calories_burned / 50) + (duration / 15)
+    fitness_score = min(10, max(1, int(base_score)))
+    
+    return {
+        'basic_metrics': {
+            'calories_burned': calories_burned,
+            'intensity_level': intensity,
+            'fitness_score': fitness_score,
+            'met_value': 0.0
+        },
+        'exercise_analysis': {
+            'heart_rate_zone': get_heart_rate_zone(intensity),
+            'energy_system': get_energy_system(exercise_type, duration),
+            'primary_benefits': get_primary_benefits(exercise_type),
+            'muscle_groups': get_muscle_groups(exercise_type),
+            'technique_points': ["保持正确姿势", "控制运动节奏"]
+        },
+        'personalized_feedback': {
+            'suitable_level': '适合' if intensity != 'high' or user_info['age'] < 50 else '需谨慎',
+            'age_considerations': get_age_considerations(user_info['age'], intensity),
+            'fitness_level_match': '与活动水平匹配',
+            'improvement_areas': ["可以逐步增加强度", "注意运动后拉伸"]
+        },
+        'recommendations': {
+            'next_workout': get_next_workout_suggestion(exercise_type),
+            'intensity_adjustment': get_intensity_adjustment(intensity),
+            'duration_suggestion': get_duration_suggestion(duration),
+            'recovery_advice': get_recovery_advice(intensity, duration),
+            'frequency_recommendation': '每周3-4次'
+        },
+        'health_insights': {
+            'calorie_burn_efficiency': '燃脂效果良好',
+            'cardiovascular_benefit': '有益心血管健康',
+            'strength_development': '有助力量发展',
+            'injury_risk': '受伤风险较低'
+        },
+        'motivation_message': get_motivation_message(fitness_score)
+    }
 
 def generate_fallback_nutrition_analysis(food_items, meal_type):
     """生成智能化的营养分析数据（基于食物内容）"""
