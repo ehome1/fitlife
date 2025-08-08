@@ -53,14 +53,6 @@
                         <div class="form-text">系统将根据运动类型和时长自动判断运动强度</div>
                     </div>
                     
-                    
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-outline-primary" id="analyzeExercise">
-                            <i class="fas fa-robot me-2"></i>AI运动分析
-                        </button>
-                        <div class="form-text">获取专业的个性化运动分析和建议</div>
-                    </div>
-                    
                     <!-- AI分析结果区域 -->
                     <div class="mb-3" id="exerciseResults" style="display: none;">
                         <label class="form-label">
@@ -225,9 +217,10 @@
                     </div>
                     
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-gradient">
-                            <i class="fas fa-check me-2"></i>记录运动
+                        <button type="button" class="btn btn-gradient" id="aiAnalysisSubmit">
+                            <i class="fas fa-robot me-2"></i>AI分析运动打卡
                         </button>
+                        <div class="form-text text-center mt-2">AI智能分析并完成打卡记录</div>
                     </div>
                 </form>
             </div>
@@ -244,34 +237,146 @@
             
             <div class="card-body">
                 {% if recent_exercises %}
-                    <div class="exercise-list">
+                    <div class="exercise-list" id="exerciseList">
                         {% for exercise in recent_exercises %}
-                        <div class="exercise-item mb-3 p-3 border rounded">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ exercise.exercise_name }}</h6>
-                                    <div class="d-flex flex-wrap gap-3 text-muted small">
-                                        <span>
-                                            <i class="fas fa-tag me-1"></i>{{ exercise.exercise_type_display }}
-                                        </span>
-                                        <span>
-                                            <i class="fas fa-clock me-1"></i>{{ exercise.duration }}分钟
-                                        </span>
-                                        <span>
-                                            <i class="fas fa-tachometer-alt me-1"></i>{{ exercise.intensity_display }}
-                                        </span>
+                        <div class="exercise-item mb-3 p-3 border rounded" data-exercise-id="{{ exercise.id }}">
+                            <!-- 三指标突出显示区域 -->
+                            <div class="row g-0 mb-3">
+                                <div class="col-4 text-center border-end">
+                                    <div class="fw-bold text-primary">📅</div>
+                                    <div class="small fw-bold">{{ exercise.date.strftime('%m-%d') }}</div>
+                                    <div class="tiny text-muted">{{ exercise.date.strftime('%a') }}</div>
+                                </div>
+                                <div class="col-4 text-center border-end">
+                                    <div class="fw-bold text-success">🏃</div>
+                                    <div class="small fw-bold">{{ exercise.exercise_type_display }}</div>
+                                    <div class="tiny text-muted">{{ exercise.exercise_name }}</div>
+                                </div>
+                                <div class="col-4 text-center">
+                                    {% if exercise.analysis_status == 'pending' %}
+                                    <div class="fw-bold text-warning">⏳</div>
+                                    <div class="small fw-bold text-warning">分析中</div>
+                                    <div class="tiny text-muted">AI计算中...</div>
+                                    {% elif exercise.analysis_status == 'completed' and exercise.calories_burned %}
+                                    <div class="fw-bold text-danger">🔥</div>
+                                    <div class="small fw-bold">{{ exercise.calories_burned }} kcal</div>
+                                    <div class="tiny text-success">
+                                        {% if exercise.ai_analysis_result and exercise.ai_analysis_result.basic_metrics %}
+                                        ⭐ {{ exercise.ai_analysis_result.basic_metrics.fitness_score }}/10
+                                        {% else %}
+                                        已完成
+                                        {% endif %}
                                     </div>
-                                    {% if exercise.notes %}
-                                    <div class="mt-2 text-muted small">
-                                        <i class="fas fa-sticky-note me-1"></i>{{ exercise.notes }}
-                                    </div>
+                                    {% else %}
+                                    <div class="fw-bold text-muted">🔥</div>
+                                    <div class="small fw-bold text-muted">-- kcal</div>
+                                    <div class="tiny text-muted">待分析</div>
                                     {% endif %}
                                 </div>
-                                <div class="text-end ms-3">
-                                    <div class="fw-bold text-danger fs-5">{{ exercise.calories_burned }}</div>
-                                    <small class="text-muted">kcal</small>
-                                    <div class="small text-muted">{{ exercise.date.strftime('%m-%d') }}</div>
+                            </div>
+                            
+                            <!-- 运动详情 -->
+                            <div class="exercise-details">
+                                <div class="small text-muted">
+                                    📋 {{ exercise.exercise_name }} · {{ exercise.duration }}分钟
+                                    {% if exercise.analysis_status == 'completed' and exercise.intensity %}
+                                     · {{ exercise.intensity_display }}
+                                    {% elif exercise.analysis_status == 'pending' %}
+                                     · 智能分析强度中...
+                                    {% else %}
+                                     · 待分析
+                                    {% endif %}
                                 </div>
+                                {% if exercise.notes %}
+                                <div class="mt-1 small text-muted">
+                                    💭 {{ exercise.notes }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- AI分析状态和报告 -->
+                            <div class="ai-status-section mt-2">
+                                {% if exercise.analysis_status == 'pending' %}
+                                <div class="small text-warning">
+                                    🤖 AI正在基于您的个人数据分析运动效果...
+                                </div>
+                                {% elif exercise.analysis_status == 'completed' and exercise.ai_analysis_result %}
+                                <div class="analysis-controls">
+                                    <button class="btn btn-link btn-sm p-0 text-decoration-none" 
+                                            onclick="toggleAnalysisReport({{ exercise.id }})" 
+                                            id="toggle-btn-{{ exercise.id }}">
+                                        📊 查看详细AI分析报告 ▼
+                                    </button>
+                                    <span class="small text-success ms-2">✅ 分析完成</span>
+                                </div>
+                                
+                                <!-- 折叠的AI分析报告 -->
+                                <div id="analysis-report-{{ exercise.id }}" class="analysis-report mt-2" style="display: none;">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body p-3">
+                                            <h6 class="card-title text-primary mb-2">
+                                                🎯 AI运动分析报告
+                                            </h6>
+                                            
+                                            {% if exercise.ai_analysis_result.exercise_analysis %}
+                                            {% set analysis = exercise.ai_analysis_result.exercise_analysis %}
+                                            
+                                            <!-- 运动分析详情 -->
+                                            <div class="row g-2 mb-2">
+                                                <div class="col-6">
+                                                    <small class="text-muted">💓 心率区间:</small><br>
+                                                    <small class="fw-bold">{{ analysis.heart_rate_zone }}</small>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small class="text-muted">⚡ 能量系统:</small><br>
+                                                    <small class="fw-bold">{{ analysis.energy_system }}</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- 主要益处 -->
+                                            {% if analysis.primary_benefits %}
+                                            <div class="mb-2">
+                                                <small class="text-muted">💪 主要益处:</small><br>
+                                                {% for benefit in analysis.primary_benefits[:3] %}
+                                                <span class="badge bg-success me-1">{{ benefit }}</span>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            <!-- 目标肌群 -->
+                                            {% if analysis.muscle_groups %}
+                                            <div class="mb-2">
+                                                <small class="text-muted">🎯 目标肌群:</small><br>
+                                                {% for muscle in analysis.muscle_groups[:3] %}
+                                                <span class="badge bg-primary me-1">{{ muscle }}</span>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            {% endif %}
+                                            
+                                            <!-- 个性化建议 -->
+                                            {% if exercise.ai_analysis_result.recommendations %}
+                                            {% set rec = exercise.ai_analysis_result.recommendations %}
+                                            <div class="border-top pt-2">
+                                                <small class="text-muted">📈 个性化建议:</small>
+                                                <ul class="list-unstyled small mt-1 mb-0">
+                                                    {% if rec.frequency_recommendation %}
+                                                    <li>• {{ rec.frequency_recommendation }}</li>
+                                                    {% endif %}
+                                                    {% if rec.intensity_adjustment %}
+                                                    <li>• {{ rec.intensity_adjustment }}</li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif exercise.analysis_status == 'failed' %}
+                                <div class="small text-danger">
+                                    ❌ AI分析失败，使用基础数据显示
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -312,74 +417,297 @@ document.addEventListener('DOMContentLoaded', function() {
     const exerciseType = document.getElementById('exercise_type');
     const duration = document.getElementById('duration');
     const exerciseDate = document.getElementById('exercise_date');
-    const form = document.querySelector('form');
-    const submitButton = form.querySelector('button[type="submit"]');
+    const aiAnalysisSubmit = document.getElementById('aiAnalysisSubmit');
     
     // 设置默认日期为今天
     if (!exerciseDate.value) {
         exerciseDate.value = new Date().toISOString().split('T')[0];
     }
     
-    // 优化表单提交体验 - 立即反馈
-    form.addEventListener('submit', function(e) {
-        // 立即显示提交状态
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>正在保存...';
-        
-        // 立即添加临时记录到界面（乐观更新）
-        const exerciseList = document.querySelector('.exercise-list');
-        const noRecords = document.querySelector('.text-center.py-4');
-        
-        if (exerciseList || noRecords) {
-            const newExercise = createTempExerciseItem({
-                exercise_name: document.getElementById('exercise_name').value,
-                exercise_type: exerciseType.options[exerciseType.selectedIndex].text,
-                duration: duration.value,
-                date: new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-            });
-            
-            if (noRecords) {
-                // 如果没有记录，创建列表并添加
-                noRecords.style.display = 'none';
-                const exerciseListDiv = document.createElement('div');
-                exerciseListDiv.className = 'exercise-list';
-                exerciseListDiv.appendChild(newExercise);
-                noRecords.parentNode.insertBefore(exerciseListDiv, noRecords);
-            } else if (exerciseList) {
-                // 如果有记录，插入到顶部
-                exerciseList.insertBefore(newExercise, exerciseList.firstChild);
-            }
-            
-            // 显示成功提示
-            showToast('运动记录正在保存中...', 'info');
-        }
-        
-        // 不阻止表单提交，让后端处理
+    // 新的统一AI分析打卡处理
+    aiAnalysisSubmit.addEventListener('click', function() {
+        handleAiAnalysisCheckin();
     });
     
-    // 创建临时运动记录项
-    function createTempExerciseItem(data) {
+    // 统一AI分析打卡处理函数
+    async function handleAiAnalysisCheckin() {
+        // 1. 表单验证
+        const exerciseTypeValue = exerciseType.value;
+        const exerciseName = document.getElementById('exercise_name').value.trim();
+        const durationValue = duration.value;
+        const dateValue = exerciseDate.value;
+        const notesValue = document.getElementById('notes').value.trim();
+        
+        if (!exerciseTypeValue || !exerciseName || !durationValue || !dateValue) {
+            showToast('请填写完整的运动信息', 'warning');
+            return;
+        }
+        
+        // 2. 显示处理状态
+        aiAnalysisSubmit.disabled = true;
+        aiAnalysisSubmit.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>AI分析并保存中...';
+        
+        try {
+            // 3. 立即保存基础记录并显示"分析中"状态
+            const saveResponse = await fetch('/exercise-log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                credentials: 'same-origin',
+                body: new URLSearchParams({
+                    'exercise_date': dateValue,
+                    'exercise_type': exerciseTypeValue,
+                    'exercise_name': exerciseName,
+                    'duration': durationValue,
+                    'notes': notesValue,
+                    'analysis_status': 'pending'
+                })
+            });
+            
+            if (!saveResponse.ok) {
+                throw new Error('保存运动记录失败');
+            }
+            
+            const saveResult = await saveResponse.json();
+            const exerciseId = saveResult.exercise_id;
+            
+            // 4. 立即添加"分析中"状态的记录到界面
+            addPendingExerciseItem({
+                id: exerciseId,
+                exercise_name: exerciseName,
+                exercise_type: exerciseType.options[exerciseType.selectedIndex].text,
+                duration: durationValue,
+                date: new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }),
+                notes: notesValue
+            });
+            
+            showToast('运动记录已保存，AI分析进行中...', 'info');
+            
+            // 5. 异步调用AI分析
+            const analysisResponse = await fetch('/api/analyze-exercise', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    exercise_id: exerciseId,
+                    exercise_type: exerciseTypeValue,
+                    exercise_name: exerciseName,
+                    duration: parseInt(durationValue)
+                })
+            });
+            
+            const analysisResult = await analysisResponse.json();
+            
+            if (analysisResult.success) {
+                // 6. 更新记录状态为已完成
+                updateExerciseItemStatus(exerciseId, analysisResult.data);
+                showToast('AI分析完成！', 'success');
+            } else {
+                // AI分析失败，但记录已保存
+                updateExerciseItemStatus(exerciseId, null, 'failed');
+                showToast('记录已保存，但AI分析失败', 'warning');
+            }
+            
+            // 7. 重置表单
+            resetForm();
+            
+        } catch (error) {
+            console.error('处理错误:', error);
+            showToast('操作失败：' + error.message, 'error');
+        } finally {
+            // 恢复按钮状态
+            aiAnalysisSubmit.disabled = false;
+            aiAnalysisSubmit.innerHTML = '<i class="fas fa-robot me-2"></i>AI分析运动打卡';
+        }
+    }
+    
+    // 创建"分析中"状态的运动记录项
+    function addPendingExerciseItem(data) {
+        const exerciseList = document.getElementById('exerciseList');
+        const noRecords = document.querySelector('.text-center.py-4');
+        
+        const newExercise = createExerciseItemHTML(data, 'pending');
+        
+        if (noRecords) {
+            // 如果没有记录，隐藏提示并创建列表
+            noRecords.style.display = 'none';
+            if (!exerciseList) {
+                const listDiv = document.createElement('div');
+                listDiv.className = 'exercise-list';
+                listDiv.id = 'exerciseList';
+                noRecords.parentNode.insertBefore(listDiv, noRecords);
+                listDiv.appendChild(newExercise);
+            }
+        } else if (exerciseList) {
+            // 插入到列表顶部
+            exerciseList.insertBefore(newExercise, exerciseList.firstChild);
+        }
+    }
+    
+    // 创建运动记录项HTML
+    function createExerciseItemHTML(data, status = 'pending') {
         const div = document.createElement('div');
-        div.className = 'exercise-item mb-3 p-3 border rounded temp-item';
-        div.style.opacity = '0.7';
+        div.className = 'exercise-item mb-3 p-3 border rounded';
+        div.setAttribute('data-exercise-id', data.id);
+        
+        const statusHTML = status === 'pending' ? 
+            `<div class="fw-bold text-warning analysis-pending">⏳</div>
+             <div class="small fw-bold text-warning">分析中</div>
+             <div class="tiny text-muted">AI计算中...</div>` :
+            `<div class="fw-bold text-muted">🔥</div>
+             <div class="small fw-bold text-muted">-- kcal</div>
+             <div class="tiny text-muted">待分析</div>`;
+        
         div.innerHTML = `
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="flex-grow-1">
-                    <h6 class="mb-1">${data.exercise_name} <small class="text-muted">(保存中...)</small></h6>
-                    <div class="d-flex flex-wrap gap-3 text-muted small">
-                        <span><i class="fas fa-tag me-1"></i>${data.exercise_type}</span>
-                        <span><i class="fas fa-clock me-1"></i>${data.duration}分钟</span>
-                        <span><i class="fas fa-spinner fa-spin me-1"></i>计算中</span>
-                    </div>
+            <!-- 三指标突出显示区域 -->
+            <div class="row g-0 mb-3">
+                <div class="col-4 text-center border-end">
+                    <div class="fw-bold text-primary">📅</div>
+                    <div class="small fw-bold">${data.date}</div>
+                    <div class="tiny text-muted">今天</div>
                 </div>
-                <div class="text-end ms-3">
-                    <div class="fw-bold text-muted fs-6">计算中</div>
-                    <small class="text-muted">kcal</small>
-                    <div class="small text-muted">${data.date}</div>
+                <div class="col-4 text-center border-end">
+                    <div class="fw-bold text-success">🏃</div>
+                    <div class="small fw-bold">${data.exercise_type}</div>
+                    <div class="tiny text-muted">${data.exercise_name}</div>
+                </div>
+                <div class="col-4 text-center">
+                    ${statusHTML}
+                </div>
+            </div>
+            
+            <!-- 运动详情 -->
+            <div class="exercise-details">
+                <div class="small text-muted">
+                    📋 ${data.exercise_name} · ${data.duration}分钟 · 智能分析强度中...
+                </div>
+                ${data.notes ? `<div class="mt-1 small text-muted">💭 ${data.notes}</div>` : ''}
+            </div>
+            
+            <!-- AI分析状态 -->
+            <div class="ai-status-section mt-2">
+                <div class="small text-warning">
+                    🤖 AI正在基于您的个人数据分析运动效果...
                 </div>
             </div>
         `;
+        
         return div;
+    }
+    
+    // 更新运动记录项状态
+    function updateExerciseItemStatus(exerciseId, analysisData, status = 'completed') {
+        const exerciseItem = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+        if (!exerciseItem) return;
+        
+        if (status === 'completed' && analysisData) {
+            // 更新为完成状态
+            const caloriesSection = exerciseItem.querySelector('.col-4:last-child');
+            const basicMetrics = analysisData.basic_metrics || analysisData;
+            
+            caloriesSection.innerHTML = `
+                <div class="fw-bold text-danger">🔥</div>
+                <div class="small fw-bold">${basicMetrics.calories_burned || 0} kcal</div>
+                <div class="tiny text-success">⭐ ${basicMetrics.fitness_score || 0}/10</div>
+            `;
+            
+            // 更新运动详情
+            const detailsSection = exerciseItem.querySelector('.exercise-details .small');
+            const intensityText = basicMetrics.intensity_level || '中等强度';
+            detailsSection.innerHTML = detailsSection.innerHTML.replace('智能分析强度中...', intensityText);
+            
+            // 更新AI状态为完成
+            const statusSection = exerciseItem.querySelector('.ai-status-section');
+            statusSection.innerHTML = `
+                <div class="analysis-controls">
+                    <button class="btn btn-link btn-sm p-0 text-decoration-none" 
+                            onclick="toggleAnalysisReport(${exerciseId})" 
+                            id="toggle-btn-${exerciseId}">
+                        📊 查看详细AI分析报告 ▼
+                    </button>
+                    <span class="small text-success ms-2">✅ 分析完成</span>
+                </div>
+                
+                <!-- 折叠的AI分析报告 -->
+                <div id="analysis-report-${exerciseId}" class="analysis-report mt-2" style="display: none;">
+                    ${generateAnalysisReportHTML(analysisData)}
+                </div>
+            `;
+        } else if (status === 'failed') {
+            // 更新为失败状态
+            const statusSection = exerciseItem.querySelector('.ai-status-section');
+            statusSection.innerHTML = `
+                <div class="small text-danger">
+                    ❌ AI分析失败，使用基础数据显示
+                </div>
+            `;
+        }
+    }
+    
+    // 生成分析报告HTML
+    function generateAnalysisReportHTML(analysisData) {
+        if (!analysisData || !analysisData.exercise_analysis) {
+            return '<div class="text-muted p-3">分析数据不完整</div>';
+        }
+        
+        const analysis = analysisData.exercise_analysis;
+        const recommendations = analysisData.recommendations || {};
+        
+        return `
+            <div class="card border-0 bg-light">
+                <div class="card-body p-3">
+                    <h6 class="card-title text-primary mb-2">🎯 AI运动分析报告</h6>
+                    
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <small class="text-muted">💓 心率区间:</small><br>
+                            <small class="fw-bold">${analysis.heart_rate_zone || '有氧区间'}</small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">⚡ 能量系统:</small><br>
+                            <small class="fw-bold">${analysis.energy_system || '有氧系统'}</small>
+                        </div>
+                    </div>
+                    
+                    ${analysis.primary_benefits ? `
+                    <div class="mb-2">
+                        <small class="text-muted">💪 主要益处:</small><br>
+                        ${analysis.primary_benefits.slice(0,3).map(benefit => 
+                            `<span class="badge bg-success me-1">${benefit}</span>`
+                        ).join('')}
+                    </div>` : ''}
+                    
+                    ${analysis.muscle_groups ? `
+                    <div class="mb-2">
+                        <small class="text-muted">🎯 目标肌群:</small><br>
+                        ${analysis.muscle_groups.slice(0,3).map(muscle => 
+                            `<span class="badge bg-primary me-1">${muscle}</span>`
+                        ).join('')}
+                    </div>` : ''}
+                    
+                    <div class="border-top pt-2">
+                        <small class="text-muted">📈 个性化建议:</small>
+                        <ul class="list-unstyled small mt-1 mb-0">
+                            ${recommendations.frequency_recommendation ? 
+                                `<li>• ${recommendations.frequency_recommendation}</li>` : ''}
+                            ${recommendations.intensity_adjustment ? 
+                                `<li>• ${recommendations.intensity_adjustment}</li>` : ''}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 重置表单
+    function resetForm() {
+        document.getElementById('exercise_name').value = '';
+        document.getElementById('duration').value = '';
+        document.getElementById('notes').value = '';
+        exerciseType.selectedIndex = 0;
     }
     
     // 简单的Toast通知
@@ -401,62 +729,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
-    // AI运动分析功能
-    const analyzeButton = document.getElementById('analyzeExercise');
-    const exerciseResults = document.getElementById('exerciseResults');
-    const exerciseAnalysisLoading = document.getElementById('exerciseAnalysisLoading');
-    
-    analyzeButton.addEventListener('click', function() {
-        const exerciseTypesValue = exerciseType.value;
-        const exerciseName = document.getElementById('exercise_name').value.trim();
-        const durationValue = duration.value;
+    // 折叠/展开分析报告
+    window.toggleAnalysisReport = function(exerciseId) {
+        const report = document.getElementById(`analysis-report-${exerciseId}`);
+        const toggleBtn = document.getElementById(`toggle-btn-${exerciseId}`);
         
-        if (!exerciseTypesValue || !exerciseName || !durationValue) {
-            alert('请先填写完整的运动信息');
-            return;
+        if (report.style.display === 'none') {
+            report.style.display = 'block';
+            toggleBtn.innerHTML = '📊 收起详细AI分析报告 ▲';
+        } else {
+            report.style.display = 'none';
+            toggleBtn.innerHTML = '📊 查看详细AI分析报告 ▼';
         }
-        
-        // 显示加载状态
-        exerciseResults.style.display = 'block';
-        exerciseAnalysisLoading.style.display = 'block';
-        analyzeButton.disabled = true;
-        analyzeButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>分析中...';
-        
-        // 调用AI运动分析API
-        fetch('/api/analyze-exercise', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                exercise_type: exerciseTypesValue,
-                exercise_name: exerciseName,
-                duration: parseInt(durationValue)
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayExerciseAnalysisResults(data.data);
-            } else {
-                alert('AI分析失败：' + (data.error || '未知错误'));
-            }
-            
-            exerciseAnalysisLoading.style.display = 'none';
-            analyzeButton.disabled = false;
-            analyzeButton.innerHTML = '<i class="fas fa-robot me-2"></i>重新分析';
-        })
-        .catch(error => {
-            console.error('API调用错误:', error);
-            alert('网络错误，请稍后重试');
-            
-            exerciseAnalysisLoading.style.display = 'none';
-            analyzeButton.disabled = false;
-            analyzeButton.innerHTML = '<i class="fas fa-robot me-2"></i>AI运动分析';
-        });
-    });
+    };
     
     
     // 运动类型对应的常见运动名称

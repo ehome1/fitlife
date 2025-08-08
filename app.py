@@ -128,6 +128,10 @@ class ExerciseLog(db.Model):
     calories_burned = db.Column(db.Integer)
     intensity = db.Column(db.String(20))
     notes = db.Column(db.Text)
+    # AI分析状态: 'pending', 'completed', 'failed'
+    analysis_status = db.Column(db.String(20), default='pending')
+    # AI分析结果JSON数据
+    ai_analysis_result = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     @property
@@ -455,6 +459,9 @@ def exercise_log():
                 
                 calories_burned, intensity = estimate_calories_burned(exercise_type, exercise_name, duration, weight)
                 
+                # 获取analysis_status参数（支持新的统一流程）
+                analysis_status = request.form.get('analysis_status', 'completed')  # 默认为已完成（传统方式）
+                
                 exercise_log_entry = ExerciseLog(
                     user_id=current_user.id,
                     date=exercise_date,  # 设置date字段
@@ -462,17 +469,29 @@ def exercise_log():
                     exercise_type=exercise_type,
                     exercise_name=exercise_name,
                     duration=duration,
-                    calories_burned=calories_burned,
-                    intensity=intensity,
-                    notes=notes
+                    calories_burned=calories_burned if analysis_status == 'completed' else None,  # 分析中时不设置热量
+                    intensity=intensity if analysis_status == 'completed' else None,  # 分析中时不设置强度
+                    notes=notes,
+                    analysis_status=analysis_status  # 新增：分析状态
                 )
                 
                 db.session.add(exercise_log_entry)
                 db.session.commit()
                 
-                logger.info(f"用户{current_user.id}成功保存运动记录: {exercise_name}, {duration}分钟")
-                flash(f'运动记录已保存！消耗了 {calories_burned} 卡路里')
-                return redirect(url_for('exercise_log'))
+                logger.info(f"用户{current_user.id}成功保存运动记录: {exercise_name}, {duration}分钟, 状态: {analysis_status}")
+                
+                # 检查请求类型：如果是analysis_status=pending，返回JSON
+                if analysis_status == 'pending':
+                    # 新的统一AI流程，返回JSON
+                    return jsonify({
+                        'success': True,
+                        'exercise_id': exercise_log_entry.id,
+                        'message': '运动记录已保存，AI分析进行中...'
+                    })
+                else:
+                    # 传统表单提交
+                    flash(f'运动记录已保存！消耗了 {calories_burned} 卡路里')
+                    return redirect(url_for('exercise_log'))
                 
             except Exception as e:
                 db.session.rollback()
@@ -784,6 +803,8 @@ def analyze_exercise():
         if not data:
             return jsonify({'error': '无效的请求数据'}), 400
         
+        # 支持两种模式：1)更新已存在记录 2)直接分析
+        exercise_id = data.get('exercise_id')  # 如果提供说明需要更新已存在记录
         exercise_type = data.get('exercise_type')
         exercise_name = data.get('exercise_name')
         duration_raw = data.get('duration')
@@ -823,6 +844,28 @@ def analyze_exercise():
                 'activity_level': getattr(user_profile, 'activity_level', 'moderately_active')
             }
         )
+        
+        # 如果提供了exercise_id，更新已存在的记录
+        if exercise_id:
+            try:
+                exercise_record = ExerciseLog.query.filter_by(
+                    id=exercise_id, 
+                    user_id=current_user.id
+                ).first()
+                
+                if exercise_record:
+                    # 更新记录的AI分析结果
+                    basic_metrics = analysis_result.get('basic_metrics', analysis_result)
+                    exercise_record.analysis_status = 'completed'
+                    exercise_record.ai_analysis_result = analysis_result
+                    exercise_record.calories_burned = basic_metrics.get('calories_burned', 0)
+                    exercise_record.intensity = basic_metrics.get('intensity_level', 'medium')
+                    db.session.commit()
+                    
+                    logger.info(f"更新运动记录{exercise_id}AI分析结果")
+            except Exception as e:
+                logger.error(f"更新运动记录错误: {e}")
+                # 即使更新失败，也返回分析结果
         
         return jsonify({
             'success': True,
