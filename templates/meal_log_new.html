@@ -377,8 +377,11 @@
                                     <!-- AI分析报告按钮 -->
                                     {% if meal.analysis_result %}
                                     <div class="mt-2">
-                                        <button type="button" class="btn btn-outline-info btn-sm" 
-                                                onclick="showMealAnalysisModal({{ meal.id }}, {{ meal.analysis_result|tojson }}, '{{ meal.meal_type_display }}', '{{ meal.date.strftime('%m-%d') }}')">
+                                        <button type="button" class="btn btn-outline-info btn-sm meal-analysis-btn" 
+                                                data-meal-id="{{ meal.id }}" 
+                                                data-meal-type="{{ meal.meal_type_display }}" 
+                                                data-meal-date="{{ meal.date.strftime('%m-%d') }}"
+                                                data-analysis-result="{{ meal.analysis_result|tojson|e }}">
                                             <i class="fas fa-chart-bar me-1"></i>查看AI分析报告
                                         </button>
                                     </div>
@@ -667,6 +670,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化
     updateRemoveButtons();
+    
+    // AI分析报告按钮事件监听
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.meal-analysis-btn')) {
+            const button = e.target.closest('.meal-analysis-btn');
+            const mealId = button.getAttribute('data-meal-id');
+            const mealType = button.getAttribute('data-meal-type');
+            const mealDate = button.getAttribute('data-meal-date');
+            const analysisResultStr = button.getAttribute('data-analysis-result');
+            
+            try {
+                const analysisData = JSON.parse(analysisResultStr);
+                showMealAnalysisModal(mealId, analysisData, mealType, mealDate);
+            } catch (error) {
+                console.error('解析分析数据失败:', error);
+                showToast('分析数据格式错误', 'warning');
+            }
+        }
+    });
 });
 
 // 切换每日饮食详情显示
