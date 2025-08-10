@@ -1866,6 +1866,91 @@ def get_fix_recommendations(diagnosis):
     
     return recommendations
 
+# 生产环境数据库迁移端点
+@app.route('/migrate-database-schema-secret-99999')
+def migrate_database_schema():
+    """生产环境数据库schema迁移端点"""
+    try:
+        # 检查是否为生产环境
+        if not (os.getenv('VERCEL') or os.getenv('DATABASE_URL')):
+            return jsonify({"error": "仅限生产环境使用"}), 403
+        
+        migration_results = []
+        
+        # 检查并添加exercise_log表的缺失字段
+        try:
+            # 检查analysis_status字段
+            try:
+                result = db.session.execute(text("""
+                    SELECT column_name FROM information_schema.columns 
+                    WHERE table_name = 'exercise_log' AND column_name = 'analysis_status'
+                """))
+                analysis_status_exists = len(result.fetchall()) > 0
+            except:
+                analysis_status_exists = False
+            
+            if not analysis_status_exists:
+                db.session.execute(text("""
+                    ALTER TABLE exercise_log 
+                    ADD COLUMN analysis_status VARCHAR(20) DEFAULT 'pending'
+                """))
+                migration_results.append("✅ 添加analysis_status字段")
+            else:
+                migration_results.append("ℹ️ analysis_status字段已存在")
+            
+            # 检查ai_analysis_result字段
+            try:
+                result = db.session.execute(text("""
+                    SELECT column_name FROM information_schema.columns 
+                    WHERE table_name = 'exercise_log' AND column_name = 'ai_analysis_result'
+                """))
+                ai_analysis_result_exists = len(result.fetchall()) > 0
+            except:
+                ai_analysis_result_exists = False
+            
+            if not ai_analysis_result_exists:
+                db.session.execute(text("""
+                    ALTER TABLE exercise_log 
+                    ADD COLUMN ai_analysis_result JSON
+                """))
+                migration_results.append("✅ 添加ai_analysis_result字段")
+            else:
+                migration_results.append("ℹ️ ai_analysis_result字段已存在")
+            
+            # 提交更改
+            db.session.commit()
+            
+            # 验证表结构
+            result = db.session.execute(text("""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = 'exercise_log'
+                ORDER BY ordinal_position
+            """))
+            columns = result.fetchall()
+            
+            return jsonify({
+                "status": "success",
+                "message": "数据库迁移完成",
+                "migrations": migration_results,
+                "current_schema": [{"name": col[0], "type": col[1]} for col in columns],
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                "status": "error",
+                "message": f"迁移失败: {str(e)}",
+                "migrations": migration_results
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"迁移过程错误: {str(e)}"
+        }), 500
+
 # 本地开发环境初始化
 if __name__ == '__main__':
     with app.app_context():
