@@ -1871,6 +1871,8 @@ def get_fix_recommendations(diagnosis):
 def migrate_database_schema():
     """生产环境数据库schema迁移端点"""
     try:
+        from sqlalchemy import text
+        
         # 检查是否为生产环境
         if not (os.getenv('VERCEL') or os.getenv('DATABASE_URL')):
             return jsonify({"error": "仅限生产环境使用"}), 403
