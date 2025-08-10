@@ -680,60 +680,103 @@ def meal_log():
                 flash('保存失败，请稍后重试')
                 return redirect(url_for('meal_log'))
         
-        # 获取最近的饮食记录并按餐次分组
+        # 获取最近的饮食记录并按日期分组
         try:
-            # 获取所有饮食记录
+            # 获取最近30天的饮食记录
             all_meals = MealLog.query.filter_by(
                 user_id=current_user.id
-            ).order_by(MealLog.date.desc(), MealLog.created_at.desc()).all()
+            ).order_by(MealLog.date.desc(), MealLog.created_at.desc()).limit(100).all()
             
-            # 按日期和餐次类型分组合并
-            grouped_meals = {}
+            # 按日期分组，每个日期下包含所有餐次
+            daily_grouped_meals = {}
             for meal in all_meals:
-                # 创建分组键：日期-餐次类型
-                key = f"{meal.date}_{meal.meal_type}"
+                date_key = meal.date.isoformat()
                 
-                if key not in grouped_meals:
-                    grouped_meals[key] = {
+                if date_key not in daily_grouped_meals:
+                    daily_grouped_meals[date_key] = {
                         'date': meal.date,
+                        'meals': [],
+                        'total_daily_calories': 0
+                    }
+                
+                # 查找是否已有相同餐次的记录
+                existing_meal = None
+                for existing in daily_grouped_meals[date_key]['meals']:
+                    if existing['meal_type'] == meal.meal_type:
+                        existing_meal = existing
+                        break
+                
+                if existing_meal:
+                    # 合并同餐次的食物
+                    if meal.food_name:
+                        existing_meal['food_items'].append({
+                            'name': meal.food_name,
+                            'quantity': meal.quantity or 1,
+                            'unit': '份'
+                        })
+                        existing_meal['total_calories'] += meal.calories or 0
+                        daily_grouped_meals[date_key]['total_daily_calories'] += meal.calories or 0
+                        
+                        # 更新analysis_result（使用最新的）
+                        if meal.analysis_result:
+                            existing_meal['analysis_result'] = meal.analysis_result
+                else:
+                    # 创建新的餐次记录
+                    meal_data = {
+                        'id': meal.id,
                         'meal_type': meal.meal_type,
                         'meal_type_display': meal.meal_type_display,
                         'food_items': [],
-                        'total_calories': 0,
+                        'total_calories': meal.calories or 0,
                         'created_at': meal.created_at,
-                        'notes': meal.notes or ''
+                        'analysis_result': meal.analysis_result
                     }
-                
-                # 添加食物项
-                if meal.food_name:
-                    grouped_meals[key]['food_items'].append({
-                        'name': meal.food_name,
-                        'quantity': meal.quantity or 1,
-                        'unit': '份'
-                    })
-                    grouped_meals[key]['total_calories'] += meal.calories or 0
+                    
+                    if meal.food_name:
+                        meal_data['food_items'].append({
+                            'name': meal.food_name,
+                            'quantity': meal.quantity or 1,
+                            'unit': '份'
+                        })
+                    
+                    daily_grouped_meals[date_key]['meals'].append(meal_data)
+                    daily_grouped_meals[date_key]['total_daily_calories'] += meal.calories or 0
             
-            # 转换为列表并限制数量
+            # 转换为模板需要的格式
             recent_meals = []
-            for key in sorted(grouped_meals.keys(), key=lambda x: grouped_meals[x]['created_at'], reverse=True)[:10]:
-                meal_group = grouped_meals[key]
-                # 生成食物摘要
-                food_names = [item['name'] for item in meal_group['food_items']]
-                meal_group['food_items_summary'] = '、'.join(food_names[:3])  # 最多显示3种食物
-                if len(food_names) > 3:
-                    meal_group['food_items_summary'] += f"等{len(food_names)}种食物"
+            for date_key in sorted(daily_grouped_meals.keys(), reverse=True)[:7]:  # 最近7天
+                daily_data = daily_grouped_meals[date_key]
                 
-                # 日期显示格式
-                meal_group['date_display'] = meal_group['date'].strftime('%m-%d')
-                meal_group['meal_score'] = 0  # 默认评分，可以后续添加计算逻辑
-                
-                recent_meals.append(meal_group)
+                for meal_data in daily_data['meals']:
+                    # 生成食物摘要
+                    food_names = [item['name'] for item in meal_data['food_items']]
+                    meal_data['food_items_summary'] = '、'.join(food_names[:3]) if food_names else '无食物记录'
+                    if len(food_names) > 3:
+                        meal_data['food_items_summary'] += f"等{len(food_names)}种食物"
+                    
+                    # 日期显示格式
+                    meal_data['date'] = daily_data['date']
+                    meal_data['date_display'] = daily_data['date'].strftime('%m-%d')
+                    
+                    # 从analysis_result中提取meal_score
+                    if meal_data['analysis_result'] and isinstance(meal_data['analysis_result'], dict):
+                        meal_analysis = meal_data['analysis_result'].get('meal_analysis', {})
+                        meal_data['meal_score'] = meal_analysis.get('meal_score', 0)
+                    else:
+                        meal_data['meal_score'] = 0
+                    
+                    # 添加日期总热量信息（用于新模板）
+                    meal_data['daily_total_calories'] = daily_data['total_daily_calories']
+                    
+                    recent_meals.append(meal_data)
                 
         except Exception as e:
             logger.error(f"获取饮食记录失败: {e}")
             recent_meals = []
         
-        return render_template('meal_log.html', recent_meals=recent_meals)
+        return render_template('meal_log_new.html', 
+                             recent_meals=recent_meals,
+                             today=datetime.now(timezone.utc).date())
         
     except Exception as e:
         logger.error(f"饮食记录页面错误: {e}")

@@ -1,0 +1,906 @@
+{% extends "base.html" %}
+
+{% block title %}饮食记录 - 健身饮食管理{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h4 class="mb-0">
+                    <i class="fas fa-utensils me-2"></i>饮食智能打卡
+                </h4>
+                <p class="text-muted mb-0">记录你的饮食情况，AI会自动分析营养成分并保存</p>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST" id="mealForm">
+                    <div class="mb-3">
+                        <label for="meal_date" class="form-label">用餐日期</label>
+                        <input type="date" class="form-control" id="meal_date" name="meal_date" required>
+                        <div class="form-text">选择用餐的日期</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="meal_type" class="form-label">餐次类型</label>
+                        <select class="form-select" id="meal_type" name="meal_type" required>
+                            <option value="">选择餐次类型</option>
+                            <option value="breakfast">早餐</option>
+                            <option value="lunch">午餐</option>
+                            <option value="dinner">晚餐</option>
+                            <option value="snack">加餐</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="food_description" class="form-label">
+                            <i class="fas fa-apple-alt me-2"></i>描述你的饮食
+                        </label>
+                        
+                        <!-- 自然语言输入方式 -->
+                        <div id="natural-language-input" class="mb-3">
+                            <textarea class="form-control" id="food_description" name="food_description" 
+                                      rows="4" placeholder="请描述你这餐吃的食物...&#10;&#10;例如：早餐吃了一个苹果，一盒蒙牛牛奶，两片全麦面包，还有一个煎蛋"></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                用自然语言描述即可，AI会自动识别食物种类和分量
+                            </div>
+                        </div>
+                        
+                        <!-- 可折叠的手动输入方式 -->
+                        <div class="mb-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" 
+                                    data-bs-target="#manual-input-section" aria-expanded="false">
+                                <i class="fas fa-list me-1"></i>手动逐项输入
+                            </button>
+                        </div>
+                        
+                        <div class="collapse" id="manual-input-section">
+                            <div class="card card-body">
+                                <div id="food-items-container">
+                                    <div class="food-item-row mb-2">
+                                        <div class="row g-2">
+                                            <div class="col-5">
+                                                <label class="visually-hidden" for="food_name_0">食物名称</label>
+                                                <input type="text" class="form-control" id="food_name_0" name="food_name[]" placeholder="食物名称">
+                                            </div>
+                                            <div class="col-3">
+                                                <label class="visually-hidden" for="food_amount_0">数量</label>
+                                                <input type="number" class="form-control" id="food_amount_0" name="food_amount[]" placeholder="数量" min="0.1" step="0.1">
+                                            </div>
+                                            <div class="col-3">
+                                                <label class="visually-hidden" for="food_unit_0">单位</label>
+                                                <select class="form-select" id="food_unit_0" name="food_unit[]">
+                                                    <option value="克">克</option>
+                                                    <option value="个">个</option>
+                                                    <option value="片">片</option>
+                                                    <option value="碗">碗</option>
+                                                    <option value="盒">盒</option>
+                                                    <option value="瓶">瓶</option>
+                                                    <option value="杯">杯</option>
+                                                    <option value="勺">勺</option>
+                                                    <option value="根">根</option>
+                                                    <option value="块">块</option>
+                                                    <option value="袋">袋</option>
+                                                    <option value="罐">罐</option>
+                                                    <option value="份">份</option>
+                                                    <option value="串">串</option>
+                                                    <option value="颗">颗</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-1">
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-food-item" disabled aria-label="删除食物项">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-outline-success btn-sm" id="add-food-item">
+                                    <i class="fas fa-plus me-1"></i>添加食物
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 用餐感受 - 移到AI分析按钮上面 -->
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">用餐感受 <span class="text-muted">(可选)</span></label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="记录今天的用餐感受、心情或其他想法..."></textarea>
+                    </div>
+                    
+                    <!-- AI营养分析打卡按钮 -->
+                    <div class="d-grid mb-3">
+                        <button type="button" class="btn btn-gradient" id="aiNutritionAnalysisSubmit">
+                            <i class="fas fa-robot me-2"></i>AI营养分析打卡
+                        </button>
+                        <div class="form-text text-center mt-2">AI智能分析营养并完成饮食打卡</div>
+                    </div>
+                    
+                    <!-- AI分析结果区域 -->
+                    <div class="mb-3" id="mealResults" style="display: none;">
+                        <div id="mealAnalysisLoading" style="display: none;" class="text-center p-4">
+                            <div class="spinner-border text-primary me-2"></div>
+                            <span class="text-primary">AI正在分析营养成分...</span>
+                        </div>
+                        
+                        <div id="mealAnalysisResults" class="meal-analysis-results">
+                            <!-- 基础营养数据卡片 -->
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-gradient-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-chart-pie me-2"></i>营养成分分析
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-6 col-md-4">
+                                            <div class="nutrition-item">
+                                                <div class="nutrition-value text-danger" id="total_calories">0</div>
+                                                <div class="nutrition-label">
+                                                    <i class="fas fa-fire me-1"></i>总热量(kcal)
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="nutrition-item">
+                                                <div class="nutrition-value text-primary" id="protein_amount">0</div>
+                                                <div class="nutrition-label">
+                                                    <i class="fas fa-drumstick-bite me-1"></i>蛋白质(g)
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="nutrition-item">
+                                                <div class="nutrition-value text-warning" id="carbs_amount">0</div>
+                                                <div class="nutrition-label">
+                                                    <i class="fas fa-bread-slice me-1"></i>碳水(g)
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="nutrition-item">
+                                                <div class="nutrition-value text-info" id="fat_amount">0</div>
+                                                <div class="nutrition-label">
+                                                    <i class="fas fa-cheese me-1"></i>脂肪(g)
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="nutrition-item">
+                                                <div class="nutrition-value text-success" id="fiber_amount">0</div>
+                                                <div class="nutrition-label">
+                                                    <i class="fas fa-seedling me-1"></i>纤维(g)
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="nutrition-item">
+                                                <div class="meal-score-display">
+                                                    <span class="score-value" id="meal_score">0</span>
+                                                    <small class="score-max">/10</small>
+                                                </div>
+                                                <div class="nutrition-label">
+                                                    <i class="fas fa-star me-1"></i>膳食评分
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 营养评估卡片 -->
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-gradient-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-balance-scale me-2"></i>营养评估
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="balance-item">
+                                        <span class="balance-label">营养均衡:</span>
+                                        <span class="balance-value" id="balance_rating">良好</span>
+                                    </div>
+                                    <div class="balance-item">
+                                        <span class="balance-label">餐次适配:</span>
+                                        <span class="balance-value" id="meal_suitability">适合</span>
+                                    </div>
+                                    <div class="balance-item">
+                                        <span class="balance-label">分量评估:</span>
+                                        <span class="balance-value" id="portion_assessment">适中</span>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h6 class="text-success">
+                                            <i class="fas fa-thumbs-up me-1"></i>营养优点
+                                        </h6>
+                                        <div id="nutrition_strengths">
+                                            <span class="badge bg-success me-1 mb-1">营养均衡</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h6 class="text-warning">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>改进建议
+                                        </h6>
+                                        <div id="nutrition_improvements">
+                                            <span class="badge bg-warning me-1 mb-1">可增加蔬菜</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 个性化建议卡片 -->
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-gradient-warning text-dark">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user-md me-2"></i>个性化建议
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-utensils me-1"></i>下餐建议</h6>
+                                                <p class="small" id="next_meal_tip">保持均衡营养</p>
+                                            </div>
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-lightbulb me-1"></i>今日贴士</h6>
+                                                <p class="small" id="daily_tip">多样化饮食</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-tint me-1"></i>补水提醒</h6>
+                                                <p class="small" id="hydration_tip">记得多喝水</p>
+                                            </div>
+                                            <div class="recommendation-item">
+                                                <h6><i class="fas fa-heart me-1"></i>健康评估</h6>
+                                                <p class="small" id="health_impact">整体健康</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="alert alert-info mt-3" role="alert">
+                                        <i class="fas fa-quote-left me-2"></i>
+                                        <span id="motivation_message">营养搭配不错，继续保持！</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>饮食历史记录
+                </h5>
+            </div>
+            
+            <div class="card-body">
+                {% if recent_meals %}
+                    <div class="meal-history" id="mealHistory">
+                        {% set daily_meals = {} %}
+                        {% for meal in recent_meals %}
+                            {% set date_key = meal.date.strftime('%Y-%m-%d') %}
+                            {% if date_key not in daily_meals %}
+                                {% set daily_meals = daily_meals.update({date_key: []}) or daily_meals %}
+                            {% endif %}
+                            {% set _ = daily_meals.setdefault(date_key, []).append(meal) %}
+                        {% endfor %}
+                        
+                        {% for date_key, meals in daily_meals.items() %}
+                        {% set date_obj = meals[0].date %}
+                        {% set total_daily_calories = meals|sum(attribute='total_calories') %}
+                        
+                        <div class="daily-meal-group mb-4" data-date="{{ date_key }}">
+                            <!-- 日期卡片头部 -->
+                            <div class="date-header card border-primary">
+                                <div class="card-body p-3 cursor-pointer" onclick="toggleDailyMeals('{{ date_key }}')">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-3">
+                                                    <i class="fas fa-calendar-day text-primary fs-4"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0">
+                                                        {% if date_obj == today %}
+                                                        📅 今天 ({{ date_obj.strftime('%m-%d') }})
+                                                        {% elif (today - date_obj).days == 1 %}
+                                                        📅 昨天 ({{ date_obj.strftime('%m-%d') }})
+                                                        {% else %}
+                                                        📅 {{ date_obj.strftime('%m-%d') }}
+                                                        {% endif %}
+                                                    </h6>
+                                                    <small class="text-muted">{{ date_obj.strftime('%A') }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="text-end">
+                                                <div class="fw-bold text-danger fs-5">
+                                                    <i class="fas fa-fire me-1"></i>{{ total_daily_calories }}
+                                                </div>
+                                                <small class="text-muted">kcal总计</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-chevron-down toggle-icon" id="toggle-icon-{{ date_key }}"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 展开的餐次详情 -->
+                            <div class="daily-meals-content" id="daily-meals-{{ date_key }}" style="display: block;">
+                                {% for meal in meals %}
+                                <div class="meal-item mt-2 p-3 border rounded" data-meal-id="{{ meal.id }}">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-2">
+                                                    {% if meal.meal_type == 'breakfast' %}🌅
+                                                    {% elif meal.meal_type == 'lunch' %}🌞
+                                                    {% elif meal.meal_type == 'dinner' %}🌆
+                                                    {% else %}🍎{% endif %}
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-1">{{ meal.meal_type_display }}</h6>
+                                                    <div class="text-muted small">
+                                                        {{ meal.food_items_summary }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="text-end">
+                                                {% if meal.total_calories > 0 %}
+                                                <div class="fw-bold text-success">{{ meal.total_calories }} kcal</div>
+                                                {% if meal.meal_score > 0 %}
+                                                <div class="small text-primary">⭐ {{ meal.meal_score }}/10</div>
+                                                {% endif %}
+                                                {% else %}
+                                                <div class="text-muted">⏳ 分析中...</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- AI分析报告按钮 -->
+                                    {% if meal.analysis_result %}
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-outline-info btn-sm" 
+                                                onclick="showMealAnalysisModal({{ meal.id }}, {{ meal.analysis_result|tojson }}, '{{ meal.meal_type_display }}', '{{ meal.date.strftime('%m-%d') }}')">
+                                            <i class="fas fa-chart-bar me-1"></i>查看AI分析报告
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-utensils fs-1 text-muted mb-3"></i>
+                        <p class="text-muted">还没有饮食记录</p>
+                        <p class="small text-muted">开始记录你的第一餐吧！</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 营养目标进度卡片 -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-bullseye me-2"></i>今日营养目标
+                </h6>
+                <div class="small text-muted">
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>🔥 热量目标 (2000 kcal):</span>
+                            <span id="daily-calories-progress">0/2000</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-danger" id="calories-progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>🥩 蛋白质目标 (80g):</span>
+                            <span id="daily-protein-progress">0/80</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-primary" id="protein-progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-2">
+                        <small class="text-muted">⚖️ 营养均衡度: <span id="nutrition-balance">--</span>%</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI分析报告弹窗模态框 -->
+<div class="modal fade" id="mealAnalysisModal" tabindex="-1" aria-labelledby="mealAnalysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title" id="mealAnalysisModalLabel">
+                    <i class="fas fa-robot me-2"></i>AI营养分析详细报告
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalAnalysisContent">
+                <!-- 动态生成的分析内容 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 设置默认日期为今天
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('meal_date').value = today;
+    
+    const form = document.getElementById('mealForm');
+    const aiSubmitButton = document.getElementById('aiNutritionAnalysisSubmit');
+    
+    // AI营养分析打卡处理
+    aiSubmitButton.addEventListener('click', function() {
+        handleAiNutritionCheckin();
+    });
+    
+    // 统一AI营养分析打卡处理函数
+    async function handleAiNutritionCheckin() {
+        // 1. 表单验证
+        const mealType = document.getElementById('meal_type').value;
+        const mealDate = document.getElementById('meal_date').value;
+        const foodDescription = document.getElementById('food_description').value.trim();
+        const notes = document.getElementById('notes').value.trim();
+        
+        // 获取手动输入的食物
+        const foodNames = Array.from(document.querySelectorAll('input[name="food_name[]"]')).map(input => input.value.trim());
+        const foodAmounts = Array.from(document.querySelectorAll('input[name="food_amount[]"]')).map(input => parseFloat(input.value) || 1);
+        const foodUnits = Array.from(document.querySelectorAll('select[name="food_unit[]"]')).map(select => select.value);
+        
+        const validFoodItems = [];
+        for (let i = 0; i < foodNames.length; i++) {
+            if (foodNames[i]) {
+                validFoodItems.push({
+                    name: foodNames[i],
+                    amount: foodAmounts[i],
+                    unit: foodUnits[i]
+                });
+            }
+        }
+        
+        if (!mealType || !mealDate) {
+            showToast('请选择餐次类型和用餐日期', 'warning');
+            return;
+        }
+        
+        if (!foodDescription && validFoodItems.length === 0) {
+            showToast('请描述您的饮食或手动添加食物', 'warning');
+            return;
+        }
+        
+        // 2. 显示处理状态
+        aiSubmitButton.disabled = true;
+        aiSubmitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>AI分析并保存中...';
+        
+        // 显示分析区域
+        const mealResults = document.getElementById('mealResults');
+        const mealAnalysisLoading = document.getElementById('mealAnalysisLoading');
+        mealResults.style.display = 'block';
+        mealAnalysisLoading.style.display = 'block';
+        
+        try {
+            // 3. 提交表单数据到后端（后端会自动进行AI分析）
+            const formData = new FormData();
+            formData.append('meal_date', mealDate);
+            formData.append('meal_type', mealType);
+            formData.append('food_description', foodDescription);
+            formData.append('notes', notes);
+            
+            // 添加手动输入的食物项
+            validFoodItems.forEach((item, index) => {
+                formData.append('food_name[]', item.name);
+                formData.append('food_amount[]', item.amount);
+                formData.append('food_unit[]', item.unit);
+            });
+            
+            const response = await fetch('/meal-log', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            
+            if (response.ok) {
+                // 检查是否是重定向响应
+                if (response.url.includes('/meal-log')) {
+                    // 成功保存，页面会重新加载显示新记录
+                    showToast('饮食记录已保存并完成AI营养分析！', 'success');
+                    
+                    // 重置表单
+                    resetForm();
+                    
+                    // 隐藏分析结果区域
+                    mealResults.style.display = 'none';
+                    
+                    // 刷新页面显示最新记录
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error('保存失败');
+                }
+            } else {
+                throw new Error('网络请求失败');
+            }
+            
+        } catch (error) {
+            console.error('处理错误:', error);
+            showToast('操作失败：' + error.message, 'error');
+            mealAnalysisLoading.style.display = 'none';
+        } finally {
+            // 恢复按钮状态
+            aiSubmitButton.disabled = false;
+            aiSubmitButton.innerHTML = '<i class="fas fa-robot me-2"></i>AI营养分析打卡';
+        }
+    }
+    
+    // 重置表单
+    function resetForm() {
+        document.getElementById('food_description').value = '';
+        document.getElementById('notes').value = '';
+        document.getElementById('meal_type').selectedIndex = 0;
+        
+        // 重置手动输入区域
+        const foodNames = document.querySelectorAll('input[name="food_name[]"]');
+        const foodAmounts = document.querySelectorAll('input[name="food_amount[]"]');
+        const foodUnits = document.querySelectorAll('select[name="food_unit[]"]');
+        
+        foodNames.forEach(input => input.value = '');
+        foodAmounts.forEach(input => input.value = '');
+        foodUnits.forEach(select => select.selectedIndex = 0);
+    }
+    
+    // 简单的Toast通知
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : type === 'info' ? 'info' : 'warning'} position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'info' ? 'info-circle' : 'exclamation-triangle'} me-2"></i>
+            ${message}
+        `;
+        document.body.appendChild(toast);
+        
+        // 3秒后自动消失
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }
+    
+    // 动态添加食物项功能
+    let foodItemIndex = 1;
+    
+    function updateRemoveButtons() {
+        const foodRows = document.querySelectorAll('.food-item-row');
+        foodRows.forEach((row, index) => {
+            const removeBtn = row.querySelector('.remove-food-item');
+            removeBtn.disabled = foodRows.length <= 1;
+        });
+    }
+    
+    document.getElementById('add-food-item').addEventListener('click', function() {
+        const container = document.getElementById('food-items-container');
+        const newRow = document.createElement('div');
+        newRow.className = 'food-item-row mb-2';
+        newRow.innerHTML = `
+            <div class="row g-2">
+                <div class="col-5">
+                    <label class="visually-hidden" for="food_name_${foodItemIndex}">食物名称</label>
+                    <input type="text" class="form-control" id="food_name_${foodItemIndex}" name="food_name[]" placeholder="食物名称">
+                </div>
+                <div class="col-3">
+                    <label class="visually-hidden" for="food_amount_${foodItemIndex}">数量</label>
+                    <input type="number" class="form-control" id="food_amount_${foodItemIndex}" name="food_amount[]" placeholder="数量" min="0.1" step="0.1">
+                </div>
+                <div class="col-3">
+                    <label class="visually-hidden" for="food_unit_${foodItemIndex}">单位</label>
+                    <select class="form-select" id="food_unit_${foodItemIndex}" name="food_unit[]">
+                        <option value="克">克</option>
+                        <option value="个">个</option>
+                        <option value="片">片</option>
+                        <option value="碗">碗</option>
+                        <option value="盒">盒</option>
+                        <option value="瓶">瓶</option>
+                        <option value="杯">杯</option>
+                        <option value="勺">勺</option>
+                        <option value="根">根</option>
+                        <option value="块">块</option>
+                    </select>
+                </div>
+                <div class="col-1">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-food-item" aria-label="删除食物项">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(newRow);
+        updateRemoveButtons();
+        foodItemIndex++;
+    });
+    
+    // 删除食物项功能
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-food-item')) {
+            const row = e.target.closest('.food-item-row');
+            row.remove();
+            updateRemoveButtons();
+        }
+    });
+    
+    // 初始化
+    updateRemoveButtons();
+});
+
+// 切换每日饮食详情显示
+function toggleDailyMeals(dateKey) {
+    const content = document.getElementById(`daily-meals-${dateKey}`);
+    const icon = document.getElementById(`toggle-icon-${dateKey}`);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.className = 'fas fa-chevron-down toggle-icon';
+    } else {
+        content.style.display = 'none';
+        icon.className = 'fas fa-chevron-right toggle-icon';
+    }
+}
+
+// 显示AI分析报告弹窗
+function showMealAnalysisModal(mealId, analysisData, mealType, date) {
+    const modal = new bootstrap.Modal(document.getElementById('mealAnalysisModal'));
+    const modalTitle = document.getElementById('mealAnalysisModalLabel');
+    const modalContent = document.getElementById('modalAnalysisContent');
+    
+    // 设置标题
+    modalTitle.innerHTML = `<i class="fas fa-robot me-2"></i>AI营养分析详细报告 - ${mealType} (${date})`;
+    
+    // 生成详细分析内容
+    modalContent.innerHTML = generateDetailedAnalysisHTML(analysisData);
+    
+    // 显示模态框
+    modal.show();
+}
+
+// 生成详细分析HTML内容
+function generateDetailedAnalysisHTML(analysis) {
+    if (!analysis) {
+        return '<div class="text-center p-4"><i class="fas fa-exclamation-triangle text-warning"></i> 暂无分析数据</div>';
+    }
+    
+    const basicNutrition = analysis.basic_nutrition || {};
+    const nutritionBreakdown = analysis.nutrition_breakdown || {};
+    const mealAnalysis = analysis.meal_analysis || {};
+    const detailedAnalysis = analysis.detailed_analysis || {};
+    const personalizedFeedback = analysis.personalized_feedback || {};
+    const recommendations = analysis.recommendations || {};
+    
+    return `
+        <!-- 基础营养数据 -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-chart-pie me-2"></i>营养成分详细数据</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-4">
+                        <div class="nutrition-item">
+                            <div class="nutrition-value text-danger fs-4">${basicNutrition.total_calories || 0}</div>
+                            <div class="nutrition-label"><i class="fas fa-fire me-1"></i>总热量 (kcal)</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="nutrition-item">
+                            <div class="nutrition-value text-primary fs-4">${basicNutrition.protein || 0}</div>
+                            <div class="nutrition-label"><i class="fas fa-drumstick-bite me-1"></i>蛋白质 (g)</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="nutrition-item">
+                            <div class="nutrition-value text-warning fs-4">${basicNutrition.carbohydrates || 0}</div>
+                            <div class="nutrition-label"><i class="fas fa-bread-slice me-1"></i>碳水化合物 (g)</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="nutrition-item">
+                            <div class="nutrition-value text-info fs-4">${basicNutrition.fat || 0}</div>
+                            <div class="nutrition-label"><i class="fas fa-cheese me-1"></i>脂肪 (g)</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="nutrition-item">
+                            <div class="nutrition-value text-success fs-4">${basicNutrition.fiber || 0}</div>
+                            <div class="nutrition-label"><i class="fas fa-seedling me-1"></i>膳食纤维 (g)</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="nutrition-item">
+                            <div class="nutrition-value text-secondary fs-4">${basicNutrition.sugar || 0}</div>
+                            <div class="nutrition-label"><i class="fas fa-candy-cane me-1"></i>糖分 (g)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 营养比例 -->
+                <div class="mt-4">
+                    <h6><i class="fas fa-chart-bar me-2"></i>营养比例分析</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>🥩 蛋白质: ${nutritionBreakdown.protein_percentage || 0}%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: ${nutritionBreakdown.protein_percentage || 0}%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>🍞 碳水化合物: ${nutritionBreakdown.carbs_percentage || 0}%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: ${nutritionBreakdown.carbs_percentage || 0}%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>🥑 脂肪: ${nutritionBreakdown.fat_percentage || 0}%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: ${nutritionBreakdown.fat_percentage || 0}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 膳食评估 -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-balance-scale me-2"></i>膳食评估</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center p-3 border rounded">
+                            <div class="meal-score-display mb-2">
+                                <span class="score-value fs-2 text-primary">${mealAnalysis.meal_score || 0}</span>
+                                <small class="score-max fs-5">/10</small>
+                            </div>
+                            <small class="text-muted">膳食评分</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="balance-item">
+                            <strong>营养均衡:</strong> ${mealAnalysis.balance_rating || '良好'}
+                        </div>
+                        <div class="balance-item">
+                            <strong>餐次适配:</strong> ${mealAnalysis.meal_type_suitability || '适合'}
+                        </div>
+                        <div class="balance-item">
+                            <strong>分量评估:</strong> ${mealAnalysis.portion_assessment || '适中'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 详细分析 -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-search me-2"></i>详细分析</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-success"><i class="fas fa-thumbs-up me-1"></i>营养优点</h6>
+                        <ul class="list-unstyled">
+                            ${(detailedAnalysis.strengths || []).map(strength => 
+                                `<li><i class="fas fa-check text-success me-2"></i>${strength}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>改进建议</h6>
+                        <ul class="list-unstyled">
+                            ${(detailedAnalysis.areas_for_improvement || []).map(improvement => 
+                                `<li><i class="fas fa-arrow-up text-warning me-2"></i>${improvement}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 个性化反馈 -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-user-check me-2"></i>个性化反馈</h6>
+            </div>
+            <div class="card-body">
+                <div class="feedback-item">
+                    <strong>🔥 热量评估:</strong> ${personalizedFeedback.calorie_assessment || '热量适中'}
+                </div>
+                <div class="feedback-item">
+                    <strong>⚖️ 宏量营养:</strong> ${personalizedFeedback.macro_balance || '营养比例合理'}
+                </div>
+                <div class="feedback-item">
+                    <strong>💖 健康影响:</strong> ${personalizedFeedback.health_impact || '有益健康'}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 专业建议 -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>专业建议</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="recommendation-item">
+                            <h6><i class="fas fa-utensils me-1"></i>下餐建议</h6>
+                            <p class="small">${recommendations.next_meal_suggestion || '保持均衡营养'}</p>
+                        </div>
+                        <div class="recommendation-item">
+                            <h6><i class="fas fa-lightbulb me-1"></i>今日贴士</h6>
+                            <p class="small">${recommendations.daily_nutrition_tip || '多样化饮食'}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="recommendation-item">
+                            <h6><i class="fas fa-tint me-1"></i>补水提醒</h6>
+                            <p class="small">${recommendations.hydration_reminder || '记得多喝水'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 激励信息 -->
+        <div class="alert alert-info" role="alert">
+            <div class="text-center">
+                <i class="fas fa-quote-left me-2"></i>
+                <strong>${analysis.motivation_message || '营养搭配不错，继续保持健康饮食！'}</strong>
+                <i class="fas fa-quote-right ms-2"></i>
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}
