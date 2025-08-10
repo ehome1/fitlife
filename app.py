@@ -597,8 +597,8 @@ def meal_log():
                 if food_description:
                     combined_notes['original_description'] = food_description
                 
-                # 为每个食物项创建单独的记录
-                saved_count = 0
+                # 为每个食物项创建单独的记录并收集ID
+                saved_entries = []
                 for food_item in food_items:
                     meal_log_entry = MealLog(
                         user_id=current_user.id,
@@ -611,11 +611,67 @@ def meal_log():
                     )
                     
                     db.session.add(meal_log_entry)
-                    saved_count += 1
+                    saved_entries.append(meal_log_entry)
                 
                 db.session.commit()
                 
-                flash(f'饮食记录已保存！共记录了{saved_count}种食物，建议使用AI分析获取详细营养信息')
+                # 获取保存后的记录ID
+                meal_ids = [entry.id for entry in saved_entries]
+                
+                # 立即进行AI分析并更新营养数据
+                try:
+                    # 获取用户资料用于AI分析
+                    user_profile = getattr(current_user, 'profile', None)
+                    if not user_profile:
+                        weight = 70
+                        height = 170
+                        age = 30
+                        gender = '未知'
+                        fitness_goal = 'maintain_weight'
+                    else:
+                        weight = user_profile.weight or 70
+                        height = user_profile.height or 170
+                        age = user_profile.age or 30
+                        gender = user_profile.gender or '未知'
+                        fitness_goal = getattr(user_profile, 'fitness_goals', 'maintain_weight')
+                    
+                    # 调用AI分析
+                    analysis_result = call_gemini_meal_analysis(meal_type, food_items, {
+                        'age': age,
+                        'gender': gender,
+                        'weight': weight,
+                        'height': height,
+                        'fitness_goal': fitness_goal
+                    }, food_description)
+                    
+                    # 更新营养数据
+                    if analysis_result:
+                        basic_nutrition = analysis_result.get('basic_nutrition', {})
+                        total_calories = basic_nutrition.get('total_calories', 0)
+                        protein = basic_nutrition.get('protein', 0)
+                        carbs = basic_nutrition.get('carbohydrates', 0)
+                        fat = basic_nutrition.get('fat', 0)
+                        
+                        # 按食物数量分配营养素
+                        food_count = len(saved_entries)
+                        for entry in saved_entries:
+                            entry.calories = int(total_calories / food_count) if food_count > 0 else total_calories
+                            entry.protein = round(protein / food_count, 1) if food_count > 0 else protein
+                            entry.carbs = round(carbs / food_count, 1) if food_count > 0 else carbs
+                            entry.fat = round(fat / food_count, 1) if food_count > 0 else fat
+                            entry.analysis_result = analysis_result
+                        
+                        db.session.commit()
+                        logger.info(f"自动更新了{len(saved_entries)}条饮食记录的营养数据")
+                        
+                        flash(f'饮食记录已保存并完成AI营养分析！共记录了{len(saved_entries)}种食物，总热量{total_calories}卡路里')
+                    else:
+                        flash(f'饮食记录已保存！共记录了{len(saved_entries)}种食物，AI分析失败请稍后重试')
+                        
+                except Exception as ai_error:
+                    logger.error(f"AI分析失败: {ai_error}")
+                    flash(f'饮食记录已保存！共记录了{len(saved_entries)}种食物，AI分析失败: {str(ai_error)}')
+                
                 return redirect(url_for('meal_log'))
                 
             except Exception as e:
@@ -1051,6 +1107,45 @@ def analyze_meal():
             'fitness_goal': fitness_goal
         }, natural_language_input)
         
+        # 如果有meal_ids参数，更新对应的饮食记录
+        meal_ids = data.get('meal_ids', [])
+        if meal_ids and analysis_result:
+            try:
+                # 从AI分析结果中提取营养数据
+                basic_nutrition = analysis_result.get('basic_nutrition', {})
+                total_calories = basic_nutrition.get('total_calories', 0)
+                protein = basic_nutrition.get('protein', 0)
+                carbs = basic_nutrition.get('carbohydrates', 0)
+                fat = basic_nutrition.get('fat', 0)
+                
+                # 更新每个饮食记录
+                for meal_id in meal_ids:
+                    meal_record = MealLog.query.filter_by(
+                        id=meal_id,
+                        user_id=current_user.id
+                    ).first()
+                    
+                    if meal_record:
+                        # 按食物数量分配营养素（简化处理）
+                        food_count = len(meal_ids)
+                        meal_record.calories = int(total_calories / food_count) if food_count > 0 else total_calories
+                        meal_record.protein = round(protein / food_count, 1) if food_count > 0 else protein
+                        meal_record.carbs = round(carbs / food_count, 1) if food_count > 0 else carbs
+                        meal_record.fat = round(fat / food_count, 1) if food_count > 0 else fat
+                        
+                        # 保存AI分析结果
+                        if meal_record.analysis_result:
+                            meal_record.analysis_result.update(analysis_result)
+                        else:
+                            meal_record.analysis_result = analysis_result
+                
+                db.session.commit()
+                logger.info(f"更新了{len(meal_ids)}条饮食记录的营养数据")
+                
+            except Exception as e:
+                logger.error(f"更新饮食记录营养数据失败: {e}")
+                db.session.rollback()
+        
         return jsonify({
             'success': True,
             'data': analysis_result
@@ -1064,6 +1159,70 @@ def analyze_meal():
         return jsonify({
             'success': False,
             'error': '分析过程中出现错误',
+            'details': str(e) if app.debug else None
+        }), 500
+
+@app.route('/api/update-meal-nutrition', methods=['POST'])
+@login_required
+def update_meal_nutrition():
+    """更新饮食记录的营养数据API端点"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '无效的请求数据'}), 400
+        
+        meal_ids = data.get('meal_ids', [])
+        nutrition_data = data.get('nutrition_data', {})
+        
+        if not meal_ids or not nutrition_data:
+            return jsonify({'error': '缺少必要的参数'}), 400
+        
+        # 提取营养数据
+        basic_nutrition = nutrition_data.get('basic_nutrition', {})
+        total_calories = basic_nutrition.get('total_calories', 0)
+        protein = basic_nutrition.get('protein', 0)
+        carbs = basic_nutrition.get('carbohydrates', 0)
+        fat = basic_nutrition.get('fat', 0)
+        
+        updated_count = 0
+        
+        # 更新每个饮食记录
+        for meal_id in meal_ids:
+            meal_record = MealLog.query.filter_by(
+                id=meal_id,
+                user_id=current_user.id
+            ).first()
+            
+            if meal_record:
+                # 按食物数量平均分配营养素
+                food_count = len(meal_ids)
+                meal_record.calories = int(total_calories / food_count) if food_count > 0 else total_calories
+                meal_record.protein = round(protein / food_count, 1) if food_count > 0 else protein
+                meal_record.carbs = round(carbs / food_count, 1) if food_count > 0 else carbs
+                meal_record.fat = round(fat / food_count, 1) if food_count > 0 else fat
+                
+                # 更新analysis_result
+                if meal_record.analysis_result:
+                    meal_record.analysis_result.update(nutrition_data)
+                else:
+                    meal_record.analysis_result = nutrition_data
+                
+                updated_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'成功更新{updated_count}条饮食记录的营养数据',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"更新饮食营养数据失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': '更新失败',
             'details': str(e) if app.debug else None
         }), 500
 
