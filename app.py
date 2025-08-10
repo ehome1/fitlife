@@ -2155,6 +2155,153 @@ def migrate_database_schema():
             "message": f"迁移过程错误: {str(e)}"
         }), 500
 
+# SystemSettings 模型
+class SystemSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.Text)
+    description = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+# ==================== 后台管理系统路由 ====================
+
+@app.route('/admin')
+def admin_index():
+    """后台管理首页 - 无需登录验证"""
+    user_count = User.query.count()
+    exercise_count = ExerciseLog.query.count()
+    meal_count = MealLog.query.count()
+    try:
+        active_users = User.query.join(ExerciseLog).distinct().count()
+    except:
+        active_users = 0
+    
+    return render_template('admin/dashboard.html',
+                         user_count=user_count,
+                         exercise_count=exercise_count,
+                         meal_count=meal_count,
+                         active_users=active_users)
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """管理员登录"""
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        logger.info(f"管理员登录尝试: {username}")
+        
+        admin = AdminUser.query.filter_by(username=username, is_active=True).first()
+        if admin:
+            logger.info(f"找到管理员: {admin.username}, 角色: {admin.role}")
+            if check_password_hash(admin.password_hash, password):
+                admin.last_login = datetime.now(timezone.utc)
+                db.session.commit()
+                login_user(admin)
+                logger.info(f"管理员 {username} 登录成功")
+                return redirect(url_for('admin_index'))
+            else:
+                logger.warning(f"管理员 {username} 密码错误")
+                flash('密码错误')
+        else:
+            logger.warning(f"管理员账户 {username} 不存在或未激活")
+            flash('用户名不存在或账户未激活')
+    
+    return render_template('admin/login.html')
+
+@app.route('/admin/users')
+def admin_users():
+    """用户管理 - 无需登录验证"""
+    page = request.args.get('page', 1, type=int)
+    users = User.query.order_by(User.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False)
+    return render_template('admin/users.html', users=users)
+
+@app.route('/admin/users/<int:user_id>/toggle')
+def admin_toggle_user(user_id):
+    """启用/禁用用户 - 无需登录验证"""
+    user = User.query.get_or_404(user_id)
+    flash(f'用户 {user.username} 状态已更新')
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/prompts')
+def admin_prompts():
+    """Prompt模板管理 - 无需登录验证"""
+    prompts = PromptTemplate.query.order_by(PromptTemplate.updated_at.desc()).all()
+    return render_template('admin/prompts.html', prompts=prompts)
+
+@app.route('/admin/prompts/new', methods=['GET', 'POST'])
+def admin_new_prompt():
+    """创建新Prompt模板 - 无需登录验证"""
+    if request.method == 'POST':
+        name = request.form['name']
+        prompt_type = request.form['type']
+        content = request.form['content']
+        
+        prompt = PromptTemplate(
+            name=name,
+            type=prompt_type,
+            prompt_content=content,
+            created_by=1
+        )
+        db.session.add(prompt)
+        db.session.commit()
+        
+        flash('Prompt模板创建成功')
+        return redirect(url_for('admin_prompts'))
+    
+    return render_template('admin/prompt_form.html', prompt=None)
+
+@app.route('/admin/prompts/<int:prompt_id>/edit', methods=['GET', 'POST'])
+def admin_edit_prompt(prompt_id):
+    """编辑Prompt模板 - 无需登录验证"""
+    prompt = PromptTemplate.query.get_or_404(prompt_id)
+    
+    if request.method == 'POST':
+        prompt.name = request.form['name']
+        prompt.type = request.form['type']
+        prompt.prompt_content = request.form['content']
+        prompt.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        flash('Prompt模板更新成功')
+        return redirect(url_for('admin_prompts'))
+    
+    return render_template('admin/prompt_form.html', prompt=prompt)
+
+@app.route('/admin/prompts/<int:prompt_id>/toggle')
+def admin_toggle_prompt(prompt_id):
+    """启用/禁用Prompt模板 - 无需登录验证"""
+    prompt = PromptTemplate.query.get_or_404(prompt_id)
+    prompt.is_active = not prompt.is_active
+    prompt.updated_at = datetime.now(timezone.utc)
+    
+    db.session.commit()
+    status = '启用' if prompt.is_active else '禁用'
+    flash(f'Prompt模板已{status}')
+    return redirect(url_for('admin_prompts'))
+
+@app.route('/admin/settings')
+def admin_settings():
+    """系统设置 - 无需登录验证"""
+    settings = SystemSettings.query.all()
+    cache_info = {
+        'cache_size': len(ai_analysis_cache),
+        'cache_keys': list(ai_analysis_cache.keys())[:5]
+    }
+    return render_template('admin/settings.html', settings=settings, cache_info=cache_info)
+
+@app.route('/admin/cache/clear', methods=['POST'])
+def admin_clear_cache():
+    """清理AI分析缓存 - 无需登录验证"""
+    global ai_analysis_cache
+    cache_size = len(ai_analysis_cache)
+    ai_analysis_cache.clear()
+    logger.info(f"清理了AI缓存，共清理了{cache_size}个缓存项")
+    flash(f'AI缓存已清理，共清理了{cache_size}个缓存项')
+    return redirect(url_for('admin_settings'))
+
 # 本地开发环境初始化
 if __name__ == '__main__':
     with app.app_context():
