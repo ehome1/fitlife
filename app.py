@@ -20,6 +20,9 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 简单的内存缓存用于AI分析结果
+ai_analysis_cache = {}
+
 app = Flask(__name__)
 
 # 配置根据环境变量设置
