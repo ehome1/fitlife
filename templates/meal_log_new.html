@@ -381,9 +381,12 @@
                                                 data-meal-id="{{ meal.id }}" 
                                                 data-meal-type="{{ meal.meal_type_display }}" 
                                                 data-meal-date="{{ meal.date.strftime('%m-%d') }}"
-                                                data-analysis-result="{{ meal.analysis_result|tojson|e }}">
+                                                data-analysis-result="{{ meal.analysis_result|tojson|e }}"
+                                                title="Debug: {{ meal.analysis_result|truncate(100) }}">
                                             <i class="fas fa-chart-bar me-1"></i>查看AI分析报告
                                         </button>
+                                        <!-- Debug info -->
+                                        <small class="text-muted d-block">数据类型: {{ meal.analysis_result.__class__.__name__ }}</small>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -680,12 +683,33 @@ document.addEventListener('DOMContentLoaded', function() {
             const mealDate = button.getAttribute('data-meal-date');
             const analysisResultStr = button.getAttribute('data-analysis-result');
             
+            console.log('原始分析数据:', analysisResultStr);
+            console.log('数据类型:', typeof analysisResultStr);
+            console.log('数据长度:', analysisResultStr?.length);
+            
             try {
                 const analysisData = JSON.parse(analysisResultStr);
+                console.log('解析后数据:', analysisData);
                 showMealAnalysisModal(mealId, analysisData, mealType, mealDate);
             } catch (error) {
                 console.error('解析分析数据失败:', error);
-                showToast('分析数据格式错误', 'warning');
+                console.error('错误的数据内容:', analysisResultStr);
+                showToast(`分析数据格式错误: ${error.message}`, 'warning');
+                
+                // 尝试直接显示原始数据（如果是字符串格式）
+                if (typeof analysisResultStr === 'string' && analysisResultStr.length > 0) {
+                    try {
+                        // 可能是已经是字符串的JSON，尝试直接使用
+                        const fallbackData = { 
+                            basic_nutrition: { total_calories: '解析失败' },
+                            error: '数据格式错误',
+                            raw_data: analysisResultStr
+                        };
+                        showMealAnalysisModal(mealId, fallbackData, mealType, mealDate);
+                    } catch (e) {
+                        console.error('Fallback也失败:', e);
+                    }
+                }
             }
         }
     });
@@ -725,6 +749,18 @@ function showMealAnalysisModal(mealId, analysisData, mealType, date) {
 function generateDetailedAnalysisHTML(analysis) {
     if (!analysis) {
         return '<div class="text-center p-4"><i class="fas fa-exclamation-triangle text-warning"></i> 暂无分析数据</div>';
+    }
+    
+    // 如果有错误信息，显示调试信息
+    if (analysis.error) {
+        return `
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-bug me-2"></i>调试信息</h6>
+                <p><strong>错误:</strong> ${analysis.error}</p>
+                <p><strong>原始数据:</strong></p>
+                <pre class="small">${analysis.raw_data}</pre>
+            </div>
+        `;
     }
     
     const basicNutrition = analysis.basic_nutrition || {};
