@@ -2306,9 +2306,11 @@ def admin_clear_cache():
 def admin_fix_analysis_data():
     """修复损坏的AI分析数据"""
     try:
+        from sqlalchemy import or_
+        
         # 查找损坏的analysis_result数据
         damaged_meals = MealLog.query.filter(
-            db.or_(
+            or_(
                 MealLog.analysis_result == '{',
                 MealLog.analysis_result == '}',
                 MealLog.analysis_result == '',
