@@ -228,12 +228,16 @@
                 </h5>
                 
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-admin" onclick="backupDatabase()">
-                        <i class="fas fa-download me-2"></i>备份数据库
-                    </button>
-                    <button class="btn btn-outline-warning btn-admin" onclick="clearLogs()">
-                        <i class="fas fa-trash me-2"></i>清理日志
-                    </button>
+                    <form method="POST" action="{{ url_for('admin_clear_cache') }}" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-primary btn-admin w-100" onclick="return confirm('确定要清理AI缓存吗？')">
+                            <i class="fas fa-broom me-2"></i>清理AI缓存
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin_fix_analysis_data') }}" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-warning btn-admin w-100" onclick="return confirm('确定要修复损坏的分析数据吗？这将清除损坏的数据，用户需要重新进行AI分析。')">
+                            <i class="fas fa-tools me-2"></i>修复分析数据
+                        </button>
+                    </form>
                     <button class="btn btn-outline-info btn-admin" onclick="optimizeDatabase()">
                         <i class="fas fa-wrench me-2"></i>优化数据库
                     </button>

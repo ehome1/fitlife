@@ -2302,6 +2302,36 @@ def admin_clear_cache():
     flash(f'AI缓存已清理，共清理了{cache_size}个缓存项')
     return redirect(url_for('admin_settings'))
 
+@app.route('/admin/fix-analysis-data', methods=['POST'])
+def admin_fix_analysis_data():
+    """修复损坏的AI分析数据"""
+    try:
+        # 查找损坏的analysis_result数据
+        damaged_meals = MealLog.query.filter(
+            db.or_(
+                MealLog.analysis_result == '{',
+                MealLog.analysis_result == '}',
+                MealLog.analysis_result == '',
+                MealLog.analysis_result.is_(None)
+            )
+        ).all()
+        
+        fixed_count = 0
+        for meal in damaged_meals:
+            # 清除损坏的数据，让用户重新进行AI分析
+            meal.analysis_result = None
+            fixed_count += 1
+        
+        db.session.commit()
+        logger.info(f"修复了{fixed_count}条损坏的AI分析数据")
+        flash(f'已修复 {fixed_count} 条损坏的AI分析数据')
+        
+    except Exception as e:
+        logger.error(f"修复分析数据失败: {str(e)}")
+        flash(f'修复失败: {str(e)}', 'error')
+        
+    return redirect(url_for('admin_settings'))
+
 # 本地开发环境初始化
 if __name__ == '__main__':
     with app.app_context():
