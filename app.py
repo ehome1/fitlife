@@ -2335,14 +2335,16 @@ def admin_clear_cache():
 def admin_fix_analysis_data():
     """修复损坏的AI分析数据"""
     try:
-        from sqlalchemy import or_
+        from sqlalchemy import or_, text, cast, Text
         
-        # 查找损坏的analysis_result数据
+        # 使用文本转换来查找损坏的analysis_result数据
+        # PostgreSQL JSON字段需要转换为文本进行比较
         damaged_meals = MealLog.query.filter(
             or_(
-                MealLog.analysis_result == '{',
-                MealLog.analysis_result == '}',
-                MealLog.analysis_result == '',
+                cast(MealLog.analysis_result, Text) == '{',
+                cast(MealLog.analysis_result, Text) == '}',
+                cast(MealLog.analysis_result, Text) == '',
+                cast(MealLog.analysis_result, Text) == 'null',
                 MealLog.analysis_result.is_(None)
             )
         ).all()
@@ -2359,7 +2361,23 @@ def admin_fix_analysis_data():
         
     except Exception as e:
         logger.error(f"修复分析数据失败: {str(e)}")
-        flash(f'修复失败: {str(e)}', 'error')
+        # 尝试更简单的方法
+        try:
+            # 直接使用原生SQL查询
+            damaged_count = db.session.execute(text("""
+                UPDATE meal_log 
+                SET analysis_result = NULL 
+                WHERE analysis_result::text IN ('{', '}', '', 'null')
+                   OR analysis_result IS NULL
+            """)).rowcount
+            
+            db.session.commit()
+            flash(f'已修复 {damaged_count} 条损坏的AI分析数据')
+            logger.info(f"通过原生SQL修复了{damaged_count}条损坏的AI分析数据")
+            
+        except Exception as e2:
+            logger.error(f"原生SQL修复也失败: {str(e2)}")
+            flash(f'修复失败: {str(e2)}', 'error')
         
     return redirect(url_for('admin_settings'))
 
