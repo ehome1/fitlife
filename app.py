@@ -2335,49 +2335,46 @@ def admin_clear_cache():
 def admin_fix_analysis_data():
     """修复损坏的AI分析数据"""
     try:
-        from sqlalchemy import or_, text, cast, Text
+        from sqlalchemy import text
         
-        # 使用文本转换来查找损坏的analysis_result数据
-        # PostgreSQL JSON字段需要转换为文本进行比较
-        damaged_meals = MealLog.query.filter(
-            or_(
-                cast(MealLog.analysis_result, Text) == '{',
-                cast(MealLog.analysis_result, Text) == '}',
-                cast(MealLog.analysis_result, Text) == '',
-                cast(MealLog.analysis_result, Text) == 'null',
-                MealLog.analysis_result.is_(None)
-            )
-        ).all()
+        # 直接使用原生SQL查询，避免ORM的JSON类型转换问题
+        result = db.session.execute(text("""
+            UPDATE meal_log 
+            SET analysis_result = NULL 
+            WHERE (analysis_result IS NOT NULL 
+                   AND (analysis_result::text = '{}' 
+                        OR analysis_result::text = '"{"' 
+                        OR analysis_result::text = '"{}"'
+                        OR analysis_result::text = '"}"'
+                        OR analysis_result::text = '""'
+                        OR analysis_result::text = 'null'
+                        OR LENGTH(analysis_result::text) < 5))
+               OR analysis_result IS NULL
+        """))
         
-        fixed_count = 0
-        for meal in damaged_meals:
-            # 清除损坏的数据，让用户重新进行AI分析
-            meal.analysis_result = None
-            fixed_count += 1
-        
+        damaged_count = result.rowcount
         db.session.commit()
-        logger.info(f"修复了{fixed_count}条损坏的AI分析数据")
-        flash(f'已修复 {fixed_count} 条损坏的AI分析数据')
+        
+        logger.info(f"修复了{damaged_count}条损坏的AI分析数据")
+        flash(f'已修复 {damaged_count} 条损坏的AI分析数据')
         
     except Exception as e:
         logger.error(f"修复分析数据失败: {str(e)}")
-        # 尝试更简单的方法
+        db.session.rollback()
+        
+        # 最后的fallback：只清理明确为NULL的记录
         try:
-            # 直接使用原生SQL查询
-            damaged_count = db.session.execute(text("""
-                UPDATE meal_log 
-                SET analysis_result = NULL 
-                WHERE analysis_result::text IN ('{', '}', '', 'null')
-                   OR analysis_result IS NULL
-            """)).rowcount
+            result = db.session.execute(text("""
+                SELECT COUNT(*) FROM meal_log WHERE analysis_result IS NULL
+            """))
+            null_count = result.fetchone()[0]
             
-            db.session.commit()
-            flash(f'已修复 {damaged_count} 条损坏的AI分析数据')
-            logger.info(f"通过原生SQL修复了{damaged_count}条损坏的AI分析数据")
+            flash(f'发现 {null_count} 条空分析数据，请用户重新进行AI分析')
+            logger.info(f"发现{null_count}条空分析数据")
             
         except Exception as e2:
-            logger.error(f"原生SQL修复也失败: {str(e2)}")
-            flash(f'修复失败: {str(e2)}', 'error')
+            logger.error(f"查询也失败: {str(e2)}")
+            flash(f'数据库查询失败: {str(e2)}', 'error')
         
     return redirect(url_for('admin_settings'))
 
