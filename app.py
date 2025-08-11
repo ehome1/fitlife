@@ -2285,12 +2285,38 @@ def admin_toggle_prompt(prompt_id):
 @app.route('/admin/settings')
 def admin_settings():
     """系统设置 - 无需登录验证"""
-    settings = SystemSettings.query.all()
-    cache_info = {
-        'cache_size': len(ai_analysis_cache),
-        'cache_keys': list(ai_analysis_cache.keys())[:5]
-    }
-    return render_template('admin/settings.html', settings=settings, cache_info=cache_info)
+    try:
+        settings = SystemSettings.query.all()
+        cache_info = {
+            'cache_size': len(ai_analysis_cache),
+            'cache_keys': list(ai_analysis_cache.keys())[:5]
+        }
+        return render_template('admin/settings.html', settings=settings, cache_info=cache_info)
+    except Exception as e:
+        logger.error(f"Admin settings error: {str(e)}")
+        return f"Admin settings error: {str(e)}", 500
+
+@app.route('/admin/settings-debug')
+def admin_settings_debug():
+    """调试admin设置页面"""
+    try:
+        # 测试SystemSettings查询
+        settings_count = SystemSettings.query.count()
+        
+        # 测试缓存信息
+        cache_size = len(ai_analysis_cache)
+        
+        return jsonify({
+            "status": "success",
+            "settings_count": settings_count,
+            "cache_size": cache_size,
+            "template_exists": True
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
 
 @app.route('/admin/cache/clear', methods=['POST'])
 def admin_clear_cache():
