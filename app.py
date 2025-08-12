@@ -655,6 +655,13 @@ def meal_log():
                         'fitness_goal': fitness_goal
                     }, food_description)
                     print(f"AI分析结果: {'成功' if analysis_result else '失败'}")
+                    if analysis_result:
+                        print(f"分析结果类型: {type(analysis_result)}")
+                        print(f"分析结果keys: {list(analysis_result.keys()) if isinstance(analysis_result, dict) else 'N/A'}")
+                        basic = analysis_result.get('basic_nutrition', {}) if isinstance(analysis_result, dict) else {}
+                        print(f"basic_nutrition存在: {'是' if basic else '否'}")
+                        if basic:
+                            print(f"  热量: {basic.get('total_calories', 'N/A')}")
                     
                     # 更新营养数据
                     if analysis_result:

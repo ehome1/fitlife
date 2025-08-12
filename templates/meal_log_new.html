@@ -744,7 +744,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     );
                 } else {
                     // 处理错误情况
-                    showToast('error', data.error || 'AI分析失败，请稍后重试');
+                    showToast(data.error || 'AI分析失败，请稍后重试', 'error');
                 }
             })
             .catch(error => {
@@ -753,7 +753,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 button.innerHTML = originalHtml;
                 
                 console.error('AI分析请求失败:', error);
-                showToast('error', '网络错误，请检查连接后重试');
+                showToast('网络错误，请检查连接后重试', 'error');
             });
         }
     });
@@ -830,7 +830,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
             deleteModal.hide();
             
             // 显示成功消息
-            showToast('success', data.message);
+            showToast(data.message, 'success');
             
             // 移除页面中的记录元素
             removeMealFromDOM(currentDeleteMealId);
@@ -839,7 +839,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
             updateDailyStats();
             
         } else {
-            showToast('error', data.error || '删除失败，请稍后重试');
+            showToast(data.error || '删除失败，请稍后重试', 'error');
         }
         
         currentDeleteMealId = null;
@@ -850,7 +850,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
         confirmBtn.innerHTML = originalHtml;
         
         console.error('删除请求失败:', error);
-        showToast('error', '网络错误，请检查连接后重试');
+        showToast('网络错误，请检查连接后重试', 'error');
         
         currentDeleteMealId = null;
     });
@@ -862,7 +862,7 @@ function removeMealFromDOM(mealId) {
     const deleteButton = document.querySelector(`[data-meal-id="${mealId}"].meal-delete-btn`);
     if (deleteButton) {
         // 向上查找meal记录的容器
-        let mealContainer = deleteButton.closest('.col-12');
+        let mealContainer = deleteButton.closest('.meal-item');
         if (mealContainer) {
             // 添加消失动画
             mealContainer.style.transition = 'opacity 0.3s ease-out';
@@ -891,7 +891,7 @@ function updateDailyStats() {
     // 如果有每日热量总计等显示，在这里更新
     // 可以通过重新请求数据或者重新计算页面上现有的数据来实现
     console.log('统计数据已更新');
-});
+}
 
 // 切换每日饮食详情显示
 function toggleDailyMeals(dateKey) {
