@@ -375,7 +375,7 @@
                                     </div>
                                     
                                     <!-- AI分析报告按钮 - 简化版本 -->
-                                    {% if meal.calories or meal.protein or meal.carbs or meal.fat %}
+                                    {% if meal.calories and meal.calories > 0 %}
                                     <div class="mt-2">
                                         <button type="button" class="btn btn-outline-info btn-sm meal-analysis-btn" 
                                                 data-meal-id="{{ meal.id }}" 
@@ -385,7 +385,7 @@
                                                 data-protein="{{ meal.protein or 0 }}"
                                                 data-carbs="{{ meal.carbs or 0 }}"
                                                 data-fat="{{ meal.fat or 0 }}"
-                                                data-score="{{ ((meal.calories or 0) / 100) | round(1) }}">
+                                                data-score="{{ [10, (meal.calories or 0) / 100] | min | round(1) }}">
                                             <i class="fas fa-chart-bar me-1"></i>查看AI分析报告
                                         </button>
                                     </div>
@@ -690,33 +690,49 @@ document.addEventListener('DOMContentLoaded', function() {
             const fat = button.getAttribute('data-fat') || 0;
             const mealScore = button.getAttribute('data-score') || 0;
             
+            // 计算智能评分（1-10分）
+            const calorieNum = parseInt(calories) || 0;
+            const proteinNum = parseFloat(protein) || 0;
+            const carbsNum = parseFloat(carbs) || 0;
+            const fatNum = parseFloat(fat) || 0;
+            
+            // 基础评分逻辑
+            let calculatedScore = 5; // 基础分
+            if (calorieNum > 0) {
+                if (calorieNum >= 200 && calorieNum <= 800) calculatedScore += 2; // 热量合理
+                if (proteinNum >= calorieNum * 0.15 / 4) calculatedScore += 1; // 蛋白质充足
+                if (carbsNum >= calorieNum * 0.4 / 4) calculatedScore += 1; // 碳水合理
+                if (fatNum >= calorieNum * 0.2 / 9) calculatedScore += 1; // 脂肪适量
+            }
+            const finalScore = Math.min(10, Math.max(1, calculatedScore)); // 限制在1-10分
+            
             // 直接创建分析数据，不依赖复杂的JSON解析
             const analysisData = {
                 basic_nutrition: {
-                    total_calories: parseInt(calories),
-                    protein: parseFloat(protein),
-                    carbohydrates: parseFloat(carbs),
-                    fat: parseFloat(fat),
-                    fiber: Math.round(parseFloat(calories) * 0.02), // 估算纤维
-                    sugar: Math.round(parseFloat(carbs) * 0.3) // 估算糖分
+                    total_calories: calorieNum,
+                    protein: proteinNum,
+                    carbohydrates: carbsNum,
+                    fat: fatNum,
+                    fiber: Math.round(calorieNum * 0.02), // 估算纤维
+                    sugar: Math.round(carbsNum * 0.3) // 估算糖分
                 },
                 nutrition_breakdown: {
-                    protein_percentage: Math.round((protein * 4 / calories) * 100) || 15,
-                    carbs_percentage: Math.round((carbs * 4 / calories) * 100) || 55,
-                    fat_percentage: Math.round((fat * 9 / calories) * 100) || 30
+                    protein_percentage: calorieNum > 0 ? Math.round((proteinNum * 4 / calorieNum) * 100) : 15,
+                    carbs_percentage: calorieNum > 0 ? Math.round((carbsNum * 4 / calorieNum) * 100) : 55,
+                    fat_percentage: calorieNum > 0 ? Math.round((fatNum * 9 / calorieNum) * 100) : 30
                 },
                 meal_analysis: {
-                    meal_score: parseFloat(mealScore),
-                    balance_rating: mealScore > 7 ? '优秀' : mealScore > 5 ? '良好' : '一般',
+                    meal_score: finalScore,
+                    balance_rating: finalScore > 7 ? '优秀' : finalScore > 5 ? '良好' : '一般',
                     meal_type_suitability: '适合',
-                    portion_assessment: calories > 600 ? '偏大' : calories < 300 ? '偏小' : '适中'
+                    portion_assessment: calorieNum > 600 ? '偏大' : calorieNum < 300 ? '偏小' : '适中'
                 },
                 detailed_analysis: {
                     strengths: ['营养均衡', '热量合理'],
-                    areas_for_improvement: calories > 500 ? ['可适当减少分量'] : ['可增加蛋白质摄入']
+                    areas_for_improvement: calorieNum > 600 ? ['可适当减少分量'] : ['可增加蛋白质摄入']
                 },
                 personalized_feedback: {
-                    calorie_assessment: '热量适中',
+                    calorie_assessment: calorieNum > 600 ? '热量偏高' : calorieNum < 300 ? '热量偏低' : '热量适中',
                     macro_balance: '营养比例合理',
                     health_impact: '有益健康'
                 },
@@ -725,7 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     daily_nutrition_tip: '多样化饮食',
                     hydration_reminder: '记得多喝水'
                 },
-                motivation_message: '营养搭配不错，继续保持！'
+                motivation_message: finalScore > 7 ? '营养搭配优秀，继续保持！' : '营养还不错，可以进一步优化'
             };
             
             showMealAnalysisModal(mealId, analysisData, mealType, mealDate);
