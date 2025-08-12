@@ -2384,6 +2384,51 @@ def admin_fix_analysis_data():
         
     return redirect(url_for('admin_settings'))
 
+@app.route('/admin/fix-specific-data', methods=['POST'])
+def admin_fix_specific_data():
+    """针对性修复特定损坏数据"""
+    try:
+        from sqlalchemy import text
+        
+        # 先查询有问题的数据
+        result = db.session.execute(text("""
+            SELECT id, analysis_result 
+            FROM meal_log 
+            WHERE analysis_result IS NOT NULL 
+            ORDER BY id DESC 
+            LIMIT 20
+        """))
+        
+        problem_records = []
+        for row in result:
+            analysis_text = str(row[1]) if row[1] else 'NULL'
+            if len(analysis_text.strip()) < 10 or analysis_text.strip() in ['{', '}', '""', 'null']:
+                problem_records.append(row[0])
+        
+        # 修复有问题的记录
+        if problem_records:
+            placeholders = ','.join(['%s'] * len(problem_records))
+            update_result = db.session.execute(text(f"""
+                UPDATE meal_log 
+                SET analysis_result = NULL 
+                WHERE id IN ({placeholders})
+            """), problem_records)
+            
+            db.session.commit()
+            fixed_count = update_result.rowcount
+            
+            logger.info(f"针对性修复了{fixed_count}条损坏数据，记录ID: {problem_records}")
+            flash(f'针对性修复了 {fixed_count} 条损坏数据 (IDs: {problem_records[:5]})')
+        else:
+            flash('没有发现需要修复的数据')
+        
+    except Exception as e:
+        logger.error(f"针对性修复失败: {str(e)}")
+        db.session.rollback()
+        flash(f'修复失败: {str(e)}', 'error')
+        
+    return redirect(url_for('admin_settings'))
+
 # 本地开发环境初始化
 if __name__ == '__main__':
     with app.app_context():

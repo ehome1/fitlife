@@ -238,6 +238,11 @@
                             <i class="fas fa-tools me-2"></i>修复分析数据
                         </button>
                     </form>
+                    <form method="POST" action="{{ url_for('admin_fix_specific_data') }}" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-danger btn-admin w-100" onclick="return confirm('确定要进行针对性数据修复吗？这将检查最近20条记录并修复损坏数据。')">
+                            <i class="fas fa-wrench me-2"></i>针对性修复
+                        </button>
+                    </form>
                     <button class="btn btn-outline-info btn-admin" onclick="optimizeDatabase()">
                         <i class="fas fa-wrench me-2"></i>优化数据库
                     </button>
