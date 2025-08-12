@@ -688,8 +688,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const analysisResultStr = button.getAttribute('data-analysis-result');
             
             // 数据验证和清理
+            console.log('=== AI分析数据调试信息 ===');
+            console.log('按钮ID:', mealId);
+            console.log('原始数据:', analysisResultStr);
+            console.log('数据类型:', typeof analysisResultStr);
+            console.log('数据长度:', analysisResultStr?.length);
+            console.log('前50个字符:', analysisResultStr?.substring(0, 50));
+            
             if (!analysisResultStr || analysisResultStr.length < 10) {
-                showToast('分析数据为空或过短', 'warning');
+                console.log('数据验证失败：数据为空或过短');
+                showToast(`分析数据为空或过短 (长度: ${analysisResultStr?.length || 0})`, 'warning');
+                
+                // 显示调试模态框
+                const debugData = { 
+                    error: '数据为空或过短',
+                    data_length: analysisResultStr?.length || 0,
+                    raw_data: analysisResultStr || 'null',
+                    basic_nutrition: { total_calories: 0 },
+                    meal_analysis: { meal_score: 0 }
+                };
+                showMealAnalysisModal(mealId, debugData, mealType, mealDate);
                 return;
             }
             
