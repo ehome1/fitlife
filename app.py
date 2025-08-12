@@ -2390,18 +2390,19 @@ def admin_fix_specific_data():
     try:
         from sqlalchemy import text
         
-        # 直接修复ID=37的记录（我们知道这个有问题）
+        # 使用简单有效的方法：直接通过字符长度判断
         result = db.session.execute(text("""
             UPDATE meal_log 
             SET analysis_result = NULL 
-            WHERE id = 37
+            WHERE analysis_result IS NOT NULL 
+              AND CHAR_LENGTH(analysis_result::text) < 5
         """))
         
         db.session.commit()
         fixed_count = result.rowcount
         
-        logger.info(f"直接修复了记录ID=37")
-        flash(f'直接修复了记录ID=37，共修复 {fixed_count} 条')
+        logger.info(f"通过字符长度判断修复了{fixed_count}条损坏数据")
+        flash(f'通过字符长度判断修复了 {fixed_count} 条损坏的AI分析数据')
         
     except Exception as e:
         logger.error(f"针对性修复失败: {str(e)}")
