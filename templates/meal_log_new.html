@@ -374,9 +374,14 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- AI分析报告按钮 - 简化版本 -->
-                                    {% if meal.calories and meal.calories > 0 %}
+                                    <!-- AI分析报告按钮 - 调试版本 -->
                                     <div class="mt-2">
+                                        <!-- 调试信息 -->
+                                        <small class="text-muted d-block">
+                                            调试: ID={{ meal.id }}, 热量={{ meal.calories }}, 蛋白质={{ meal.protein }}, 碳水={{ meal.carbs }}, 脂肪={{ meal.fat }}
+                                        </small>
+                                        
+                                        {% if meal.calories and meal.calories > 0 %}
                                         <button type="button" class="btn btn-outline-info btn-sm meal-analysis-btn" 
                                                 data-meal-id="{{ meal.id }}" 
                                                 data-meal-type="{{ meal.meal_type_display }}" 
@@ -388,8 +393,10 @@
                                                 data-score="{{ [10, (meal.calories or 0) / 100] | min | round(1) }}">
                                             <i class="fas fa-chart-bar me-1"></i>查看AI分析报告
                                         </button>
+                                        {% else %}
+                                        <small class="text-warning">无营养数据，无法显示分析报告</small>
+                                        {% endif %}
                                     </div>
-                                    {% endif %}
                                 </div>
                                 {% endfor %}
                             </div>
