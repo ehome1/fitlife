@@ -2341,15 +2341,21 @@ def admin_fix_analysis_data():
         result = db.session.execute(text("""
             UPDATE meal_log 
             SET analysis_result = NULL 
-            WHERE (analysis_result IS NOT NULL 
-                   AND (analysis_result::text = '{}' 
-                        OR analysis_result::text = '"{"' 
-                        OR analysis_result::text = '"{}"'
-                        OR analysis_result::text = '"}"'
-                        OR analysis_result::text = '""'
-                        OR analysis_result::text = 'null'
-                        OR LENGTH(analysis_result::text) < 5))
-               OR analysis_result IS NULL
+            WHERE analysis_result IS NOT NULL 
+              AND (
+                  analysis_result::text = '{}' 
+                  OR analysis_result::text = '"{"' 
+                  OR analysis_result::text = '"{}"'
+                  OR analysis_result::text = '"}"'
+                  OR analysis_result::text = '""'
+                  OR analysis_result::text = 'null'
+                  OR analysis_result::text = '{'
+                  OR analysis_result::text = '}'
+                  OR analysis_result::text = '"{'
+                  OR analysis_result::text = '"}"'
+                  OR LENGTH(TRIM(analysis_result::text)) < 10
+                  OR analysis_result::text ~ '^"?\{?\}?"?$'
+              )
         """))
         
         damaged_count = result.rowcount
