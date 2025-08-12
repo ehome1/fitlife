@@ -2390,22 +2390,64 @@ def admin_fix_specific_data():
     try:
         from sqlalchemy import text
         
-        # 使用简单有效的方法：直接通过字符长度判断
-        result = db.session.execute(text("""
-            UPDATE meal_log 
-            SET analysis_result = NULL 
-            WHERE analysis_result IS NOT NULL 
-              AND CHAR_LENGTH(analysis_result::text) < 5
-        """))
-        
-        db.session.commit()
-        fixed_count = result.rowcount
-        
-        logger.info(f"通过字符长度判断修复了{fixed_count}条损坏数据")
-        flash(f'通过字符长度判断修复了 {fixed_count} 条损坏的AI分析数据')
+        # 方法1: 使用LENGTH函数
+        try:
+            result = db.session.execute(text("""
+                UPDATE meal_log 
+                SET analysis_result = NULL 
+                WHERE analysis_result IS NOT NULL 
+                  AND LENGTH(analysis_result::text) <= 3
+            """))
+            
+            db.session.commit()
+            fixed_count = result.rowcount
+            
+            logger.info(f"通过LENGTH函数修复了{fixed_count}条损坏数据")
+            flash(f'通过LENGTH函数修复了 {fixed_count} 条损坏的AI分析数据')
+            
+        except Exception as e1:
+            logger.error(f"LENGTH方法失败: {str(e1)}")
+            db.session.rollback()
+            
+            # 方法2: 直接查询并逐一修复
+            try:
+                # 查询所有非NULL的analysis_result
+                result = db.session.execute(text("""
+                    SELECT id FROM meal_log 
+                    WHERE analysis_result IS NOT NULL 
+                    ORDER BY id DESC 
+                    LIMIT 50
+                """))
+                
+                # 通过ORM获取记录并检查
+                ids_to_fix = []
+                for row in result:
+                    meal_id = row[0]
+                    meal = MealLog.query.get(meal_id)
+                    if meal and meal.analysis_result:
+                        analysis_str = str(meal.analysis_result)
+                        if len(analysis_str.strip()) <= 5 or analysis_str.strip() in ['{', '}', '""', 'null']:
+                            ids_to_fix.append(meal_id)
+                
+                # 批量修复
+                if ids_to_fix:
+                    for meal_id in ids_to_fix:
+                        db.session.execute(text("UPDATE meal_log SET analysis_result = NULL WHERE id = :id"), {"id": meal_id})
+                    
+                    db.session.commit()
+                    
+                    logger.info(f"通过ORM检查修复了{len(ids_to_fix)}条损坏数据: {ids_to_fix}")
+                    flash(f'通过ORM检查修复了 {len(ids_to_fix)} 条损坏数据 (IDs: {ids_to_fix[:10]})')
+                else:
+                    flash('没有发现需要修复的损坏数据')
+                    
+            except Exception as e2:
+                logger.error(f"ORM方法也失败: {str(e2)}")
+                db.session.rollback()
+                flash(f'所有修复方法都失败: {str(e2)}', 'error')
         
     except Exception as e:
-        logger.error(f"针对性修复失败: {str(e)}")
+        logger.error(f"针对性修复完全失败: {str(e)}")
         db.session.rollback()
         flash(f'修复失败: {str(e)}', 'error')
         
