@@ -374,19 +374,19 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- AI分析报告按钮 -->
+                                    <!-- 操作按钮 -->
                                     {% if meal.total_calories and meal.total_calories > 0 %}
-                                    <div class="mt-2">
+                                    <div class="mt-2 d-flex gap-2 flex-wrap">
                                         <button type="button" class="btn btn-outline-info btn-sm meal-analysis-btn" 
-                                                data-meal-id="{{ meal.id }}" 
-                                                data-meal-type="{{ meal.meal_type_display }}" 
-                                                data-meal-date="{{ meal.date.strftime('%m-%d') }}"
-                                                data-calories="{{ meal.total_calories or 0 }}"
-                                                data-protein="{{ meal.protein or (meal.total_calories * 0.15 / 4) | round(1) }}"
-                                                data-carbs="{{ meal.carbs or (meal.total_calories * 0.55 / 4) | round(1) }}"
-                                                data-fat="{{ meal.fat or (meal.total_calories * 0.30 / 9) | round(1) }}"
-                                                data-score="{{ meal.meal_score or ([10, meal.total_calories / 100] | min | round(1)) }}">
+                                                data-meal-id="{{ meal.id }}">
                                             <i class="fas fa-chart-bar me-1"></i>查看AI分析报告
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm meal-delete-btn" 
+                                                data-meal-id="{{ meal.id }}"
+                                                data-meal-type="{{ meal.meal_type_display }}"
+                                                data-food-name="{{ meal.food_name }}"
+                                                data-calories="{{ meal.total_calories }}">
+                                            <i class="fas fa-trash me-1"></i>删除记录
                                         </button>
                                     </div>
                                     {% endif %}
@@ -455,6 +455,40 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteMealModal" tabindex="-1" aria-labelledby="deleteMealModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteMealModalLabel">
+                    <i class="fas fa-trash me-2"></i>确认删除
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-exclamation-triangle text-warning fs-1 mb-3"></i>
+                </div>
+                <h6 class="mb-3">确定要删除这条饮食记录吗？</h6>
+                <div class="alert alert-light" id="deleteMealInfo">
+                    <!-- 动态显示要删除的记录信息 -->
+                </div>
+                <p class="text-danger small mb-0">
+                    <i class="fas fa-warning me-1"></i>删除后无法恢复！
+                </p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>取消
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash me-1"></i>确认删除
+                </button>
             </div>
         </div>
     </div>
@@ -675,78 +709,188 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化
     updateRemoveButtons();
     
-    // AI分析报告按钮事件监听 - 简化版本
+    // AI分析报告按钮事件监听 - 使用真实AI分析
     document.addEventListener('click', function(e) {
         if (e.target.closest('.meal-analysis-btn')) {
             const button = e.target.closest('.meal-analysis-btn');
             const mealId = button.getAttribute('data-meal-id');
-            const mealType = button.getAttribute('data-meal-type');
-            const mealDate = button.getAttribute('data-meal-date');
             
-            // 从按钮的data属性获取基本营养信息（已经在模板中计算好）
-            const calories = button.getAttribute('data-calories') || 0;
-            const protein = button.getAttribute('data-protein') || 0;
-            const carbs = button.getAttribute('data-carbs') || 0;
-            const fat = button.getAttribute('data-fat') || 0;
-            const mealScore = button.getAttribute('data-score') || 0;
+            // 禁用按钮并显示加载状态
+            button.disabled = true;
+            const originalHtml = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>AI分析中...';
             
-            // 计算智能评分（1-10分）
-            const calorieNum = parseInt(calories) || 0;
-            const proteinNum = parseFloat(protein) || 0;
-            const carbsNum = parseFloat(carbs) || 0;
-            const fatNum = parseFloat(fat) || 0;
-            
-            // 基础评分逻辑
-            let calculatedScore = 5; // 基础分
-            if (calorieNum > 0) {
-                if (calorieNum >= 200 && calorieNum <= 800) calculatedScore += 2; // 热量合理
-                if (proteinNum >= calorieNum * 0.15 / 4) calculatedScore += 1; // 蛋白质充足
-                if (carbsNum >= calorieNum * 0.4 / 4) calculatedScore += 1; // 碳水合理
-                if (fatNum >= calorieNum * 0.2 / 9) calculatedScore += 1; // 脂肪适量
-            }
-            const finalScore = Math.min(10, Math.max(1, calculatedScore)); // 限制在1-10分
-            
-            // 直接创建分析数据，不依赖复杂的JSON解析
-            const analysisData = {
-                basic_nutrition: {
-                    total_calories: calorieNum,
-                    protein: proteinNum,
-                    carbohydrates: carbsNum,
-                    fat: fatNum,
-                    fiber: Math.round(calorieNum * 0.02), // 估算纤维
-                    sugar: Math.round(carbsNum * 0.3) // 估算糖分
-                },
-                nutrition_breakdown: {
-                    protein_percentage: calorieNum > 0 ? Math.round((proteinNum * 4 / calorieNum) * 100) : 15,
-                    carbs_percentage: calorieNum > 0 ? Math.round((carbsNum * 4 / calorieNum) * 100) : 55,
-                    fat_percentage: calorieNum > 0 ? Math.round((fatNum * 9 / calorieNum) * 100) : 30
-                },
-                meal_analysis: {
-                    meal_score: finalScore,
-                    balance_rating: finalScore > 7 ? '优秀' : finalScore > 5 ? '良好' : '一般',
-                    meal_type_suitability: '适合',
-                    portion_assessment: calorieNum > 600 ? '偏大' : calorieNum < 300 ? '偏小' : '适中'
-                },
-                detailed_analysis: {
-                    strengths: ['营养均衡', '热量合理'],
-                    areas_for_improvement: calorieNum > 600 ? ['可适当减少分量'] : ['可增加蛋白质摄入']
-                },
-                personalized_feedback: {
-                    calorie_assessment: calorieNum > 600 ? '热量偏高' : calorieNum < 300 ? '热量偏低' : '热量适中',
-                    macro_balance: '营养比例合理',
-                    health_impact: '有益健康'
-                },
-                recommendations: {
-                    next_meal_suggestion: '保持均衡营养',
-                    daily_nutrition_tip: '多样化饮食',
-                    hydration_reminder: '记得多喝水'
-                },
-                motivation_message: finalScore > 7 ? '营养搭配优秀，继续保持！' : '营养还不错，可以进一步优化'
-            };
-            
-            showMealAnalysisModal(mealId, analysisData, mealType, mealDate);
+            // 调用后端API获取真实AI分析数据
+            fetch(`/api/meal-analysis/${mealId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 恢复按钮状态
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+                
+                if (data.success && data.data) {
+                    // 使用真实的AI分析数据
+                    const mealInfo = data.meal_info || {};
+                    showMealAnalysisModal(
+                        mealId, 
+                        data.data, 
+                        mealInfo.meal_type, 
+                        mealInfo.date
+                    );
+                } else {
+                    // 处理错误情况
+                    showToast('error', data.error || 'AI分析失败，请稍后重试');
+                }
+            })
+            .catch(error => {
+                // 恢复按钮状态
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+                
+                console.error('AI分析请求失败:', error);
+                showToast('error', '网络错误，请检查连接后重试');
+            });
         }
     });
+    
+    // 删除按钮事件监听器
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.meal-delete-btn')) {
+            const button = e.target.closest('.meal-delete-btn');
+            const mealId = button.getAttribute('data-meal-id');
+            const mealType = button.getAttribute('data-meal-type');
+            const foodName = button.getAttribute('data-food-name');
+            const calories = button.getAttribute('data-calories');
+            
+            // 显示删除确认模态框
+            showDeleteConfirmModal(mealId, mealType, foodName, calories);
+        }
+    });
+});
+
+// 存储当前要删除的meal_id
+let currentDeleteMealId = null;
+
+// 显示删除确认模态框
+function showDeleteConfirmModal(mealId, mealType, foodName, calories) {
+    currentDeleteMealId = mealId;
+    
+    // 更新模态框中的信息
+    const deleteMealInfo = document.getElementById('deleteMealInfo');
+    deleteMealInfo.innerHTML = `
+        <div class="d-flex align-items-center justify-content-center">
+            <div class="me-3">
+                ${mealType === '早餐' ? '🌅' : mealType === '午餐' ? '🌞' : mealType === '晚餐' ? '🌆' : '🍎'}
+            </div>
+            <div>
+                <strong>${mealType}</strong><br>
+                <span class="text-muted">${foodName}</span><br>
+                <small class="text-info">${calories} kcal</small>
+            </div>
+        </div>
+    `;
+    
+    // 显示模态框
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteMealModal'));
+    deleteModal.show();
+}
+
+// 确认删除按钮事件
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (!currentDeleteMealId) return;
+    
+    const confirmBtn = this;
+    const originalHtml = confirmBtn.innerHTML;
+    
+    // 禁用按钮并显示加载状态
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>删除中...';
+    
+    // 发送删除请求
+    fetch(`/api/meal/${currentDeleteMealId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // 恢复按钮状态
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalHtml;
+        
+        if (data.success) {
+            // 关闭模态框
+            const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteMealModal'));
+            deleteModal.hide();
+            
+            // 显示成功消息
+            showToast('success', data.message);
+            
+            // 移除页面中的记录元素
+            removeMealFromDOM(currentDeleteMealId);
+            
+            // 重新计算统计数据
+            updateDailyStats();
+            
+        } else {
+            showToast('error', data.error || '删除失败，请稍后重试');
+        }
+        
+        currentDeleteMealId = null;
+    })
+    .catch(error => {
+        // 恢复按钮状态
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalHtml;
+        
+        console.error('删除请求失败:', error);
+        showToast('error', '网络错误，请检查连接后重试');
+        
+        currentDeleteMealId = null;
+    });
+});
+
+// 从DOM中移除meal记录
+function removeMealFromDOM(mealId) {
+    // 查找包含删除按钮的meal容器
+    const deleteButton = document.querySelector(`[data-meal-id="${mealId}"].meal-delete-btn`);
+    if (deleteButton) {
+        // 向上查找meal记录的容器
+        let mealContainer = deleteButton.closest('.col-12');
+        if (mealContainer) {
+            // 添加消失动画
+            mealContainer.style.transition = 'opacity 0.3s ease-out';
+            mealContainer.style.opacity = '0';
+            
+            // 动画完成后移除元素
+            setTimeout(() => {
+                mealContainer.remove();
+                
+                // 检查是否还有当天的记录，如果没有了就显示空状态
+                checkEmptyDaySection();
+            }, 300);
+        }
+    }
+}
+
+// 检查是否有空的日期分组
+function checkEmptyDaySection() {
+    // 这里可以添加逻辑来检查某天是否没有记录了
+    // 如果需要的话可以显示"还没有饮食记录"的提示
+}
+
+// 更新每日统计数据
+function updateDailyStats() {
+    // 重新计算页面上的统计信息
+    // 如果有每日热量总计等显示，在这里更新
+    // 可以通过重新请求数据或者重新计算页面上现有的数据来实现
+    console.log('统计数据已更新');
 });
 
 // 切换每日饮食详情显示

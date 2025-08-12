@@ -179,6 +179,10 @@ class MealLog(db.Model):
     carbs = db.Column(db.Float)
     fat = db.Column(db.Float)
     analysis_result = db.Column(db.JSON)  # AI分析结果
+    food_description = db.Column(db.Text)  # 自然语言食物描述
+    amount = db.Column(db.Float)  # 兼容旧代码的数量字段
+    unit = db.Column(db.String(10))  # 兼容旧代码的单位字段
+    meal_score = db.Column(db.Float)  # 膳食评分
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # 兼容性属性
@@ -609,6 +613,9 @@ def meal_log():
                         meal_type=meal_type,
                         food_name=food_item.get('name', '未知食物'),
                         quantity=food_item.get('amount', 1),
+                        amount=food_item.get('amount', 1),  # 新字段
+                        unit=food_item.get('unit', '份'),  # 新字段
+                        food_description=food_description,  # 新字段：原始描述
                         calories=0,  # 初始值，等AI分析后更新
                         analysis_result=combined_notes
                     )
@@ -639,6 +646,7 @@ def meal_log():
                         fitness_goal = getattr(user_profile, 'fitness_goals', 'maintain_weight')
                     
                     # 调用AI分析
+                    print(f"开始AI分析 - 餐次: {meal_type}, 食物项: {len(food_items)}, 描述: {food_description[:100] if food_description else 'None'}")
                     analysis_result = call_gemini_meal_analysis(meal_type, food_items, {
                         'age': age,
                         'gender': gender,
@@ -646,6 +654,7 @@ def meal_log():
                         'height': height,
                         'fitness_goal': fitness_goal
                     }, food_description)
+                    print(f"AI分析结果: {'成功' if analysis_result else '失败'}")
                     
                     # 更新营养数据
                     if analysis_result:
@@ -655,6 +664,10 @@ def meal_log():
                         carbs = basic_nutrition.get('carbohydrates', 0)
                         fat = basic_nutrition.get('fat', 0)
                         
+                        # 提取meal_score
+                        meal_analysis = analysis_result.get('meal_analysis', {})
+                        meal_score = meal_analysis.get('meal_score', 7)
+                        
                         # 按食物数量分配营养素
                         food_count = len(saved_entries)
                         for entry in saved_entries:
@@ -662,6 +675,7 @@ def meal_log():
                             entry.protein = round(protein / food_count, 1) if food_count > 0 else protein
                             entry.carbs = round(carbs / food_count, 1) if food_count > 0 else carbs
                             entry.fat = round(fat / food_count, 1) if food_count > 0 else fat
+                            entry.meal_score = meal_score  # 保存膳食评分
                             entry.analysis_result = analysis_result
                         
                         db.session.commit()
@@ -672,6 +686,10 @@ def meal_log():
                         flash(f'饮食记录已保存！共记录了{len(saved_entries)}种食物，AI分析失败请稍后重试')
                         
                 except Exception as ai_error:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"❌ AI分析异常详情: {ai_error}")
+                    print(f"❌ 完整错误栈: {error_details}")
                     logger.error(f"AI分析失败: {ai_error}")
                     flash(f'饮食记录已保存！共记录了{len(saved_entries)}种食物，AI分析失败: {str(ai_error)}')
                 
@@ -1272,6 +1290,126 @@ def update_meal_nutrition():
             'details': str(e) if app.debug else None
         }), 500
 
+@app.route('/api/meal-analysis/<int:meal_id>', methods=['GET'])
+@login_required
+def get_meal_analysis(meal_id):
+    """获取指定饮食记录的已保存AI分析数据"""
+    try:
+        # 查询饮食记录
+        meal = MealLog.query.filter_by(
+            id=meal_id,
+            user_id=current_user.id
+        ).first()
+        
+        if not meal:
+            return jsonify({'error': '未找到指定的饮食记录'}), 404
+        
+        # 直接返回数据库中已保存的分析结果
+        if meal.analysis_result:
+            analysis_data = meal.analysis_result
+        else:
+            # 如果没有保存的分析结果，返回基于数据库数据的简单分析
+            analysis_data = {
+                'basic_nutrition': {
+                    'total_calories': meal.calories or meal.total_calories or 0,
+                    'protein': meal.protein or 0,
+                    'carbohydrates': meal.carbs or 0,
+                    'fat': meal.fat or 0,
+                    'fiber': 0,
+                    'sugar': 0
+                },
+                'nutrition_breakdown': {
+                    'protein_percentage': 20,
+                    'carbs_percentage': 50,
+                    'fat_percentage': 30
+                },
+                'meal_analysis': {
+                    'meal_score': meal.meal_score or 7,
+                    'balance_rating': '良好',
+                    'meal_type_suitability': '适合',
+                    'portion_assessment': '适中'
+                },
+                'detailed_analysis': {
+                    'strengths': ['已记录营养信息'],
+                    'areas_for_improvement': ['可以更详细地记录食物信息']
+                },
+                'personalized_feedback': {
+                    'calorie_assessment': '热量适中',
+                    'macro_balance': '营养均衡',
+                    'health_impact': '有益健康'
+                },
+                'recommendations': {
+                    'next_meal_suggestion': '保持均衡营养',
+                    'daily_nutrition_tip': '多样化饮食',
+                    'hydration_reminder': '记得多喝水'
+                },
+                'motivation_message': '继续保持健康的饮食习惯！'
+            }
+        
+        return jsonify({
+            'success': True,
+            'data': analysis_data,
+            'meal_info': {
+                'id': meal.id,
+                'meal_type': meal.meal_type_display,
+                'date': meal.date.strftime('%Y-%m-%d'),
+                'food_name': meal.food_name,
+                'description': meal.food_description
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"获取饮食分析数据失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': '获取分析数据时出现错误',
+            'details': str(e) if app.debug else None
+        }), 500
+
+@app.route('/api/meal/<int:meal_id>', methods=['DELETE'])
+@login_required
+def delete_meal(meal_id):
+    """删除指定的饮食记录"""
+    try:
+        # 查询饮食记录
+        meal = MealLog.query.filter_by(
+            id=meal_id,
+            user_id=current_user.id
+        ).first()
+        
+        if not meal:
+            return jsonify({'error': '未找到指定的饮食记录'}), 404
+        
+        # 保存删除前的信息用于响应
+        meal_info = {
+            'id': meal.id,
+            'meal_type': meal.meal_type_display,
+            'food_name': meal.food_name,
+            'calories': meal.calories or meal.total_calories or 0,
+            'date': meal.date.strftime('%Y-%m-%d')
+        }
+        
+        # 删除记录
+        db.session.delete(meal)
+        db.session.commit()
+        
+        logger.info(f"用户{current_user.username}删除了饮食记录{meal_id}: {meal_info['food_name']}")
+        
+        return jsonify({
+            'success': True,
+            'message': '饮食记录已删除',
+            'deleted_meal': meal_info
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"删除饮食记录失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': '删除失败，请稍后重试',
+            'details': str(e) if app.debug else None
+        }), 500
+
 @app.route('/progress')
 @login_required
 def progress():
@@ -1626,7 +1764,10 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
         return result
         
     except Exception as e:
+        import traceback
         print(f"Gemini API调用错误: {e}")
+        print(f"完整错误信息: {traceback.format_exc()}")
+        logger.error(f"Gemini营养分析失败，使用fallback: {e}")
         # 返回模拟数据作为fallback
         return generate_fallback_nutrition_analysis(food_items, meal_type)
 
@@ -2354,7 +2495,7 @@ def admin_fix_analysis_data():
                   OR analysis_result::text = '"{'
                   OR analysis_result::text = '"}"'
                   OR LENGTH(TRIM(analysis_result::text)) < 10
-                  OR analysis_result::text ~ '^"?\{?\}?"?$'
+                  OR analysis_result::text ~ '^"?\\{?\\}?"?$'
               )
         """))
         
