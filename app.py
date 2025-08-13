@@ -223,16 +223,27 @@ class MealLog(db.Model):
     @property
     def food_items_summary(self):
         """生成食物摘要，用于历史记录显示"""
-        if not self.food_items:
-            return "无记录"
+        # 优先显示food_description中的内容
+        if hasattr(self, 'food_description') and self.food_description:
+            # 从描述中提取食物信息，限制长度
+            description = self.food_description.strip()
+            if len(description) > 50:
+                return description[:50] + "..."
+            return description
         
-        food_names = [item.get('name', '') for item in self.food_items[:3]]  # 只显示前3个
-        summary = '、'.join(food_names)
+        # 备选：使用food_name
+        if self.food_name:
+            return self.food_name
+            
+        # 最后备选：使用food_items
+        if self.food_items:
+            food_names = [item.get('name', '') for item in self.food_items[:3]]
+            summary = '、'.join(food_names)
+            if len(self.food_items) > 3:
+                summary += f"等{len(self.food_items)}样"
+            return summary
         
-        if len(self.food_items) > 3:
-            summary += f"等{len(self.food_items)}样"
-        
-        return summary
+        return "无记录"
     
     @property 
     def date_display(self):
@@ -801,6 +812,10 @@ def meal_log():
         except Exception as e:
             logger.error(f"获取饮食记录失败: {e}")
             recent_meals = []
+        
+        print(f"🔍 调试信息 - 准备渲染模板:")
+        print(f"  recent_meals数量: {len(recent_meals)}")
+        print(f"  recent_meals前3项: {[m.get('meal_type_display', 'N/A') for m in recent_meals[:3]]}")
         
         return render_template('meal_log_new.html', 
                              recent_meals=recent_meals,

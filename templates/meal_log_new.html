@@ -375,7 +375,7 @@
                                     </div>
                                     
                                     <!-- 操作按钮 -->
-                                    {% if meal.total_calories and meal.total_calories > 0 %}
+                                    {% if (meal.total_calories and meal.total_calories > 0) or meal.food_description %}
                                     <div class="mt-2 d-flex gap-2 flex-wrap">
                                         <button type="button" class="btn btn-outline-info btn-sm meal-analysis-btn" 
                                                 data-meal-id="{{ meal.id }}">
