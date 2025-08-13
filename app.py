@@ -252,12 +252,7 @@ class MealLog(db.Model):
             return self.meal_date.strftime('%m-%d')
         return self.created_at.strftime('%m-%d')
     
-    @property
-    def meal_score(self):
-        """获取膳食评分 (10分制)"""
-        if self.analysis_result and 'meal_analysis' in self.analysis_result:
-            return self.analysis_result['meal_analysis'].get('meal_score', 0)
-        return 0
+    # meal_score is now a regular database column, no property needed
 
 # 后台管理系统数据模型
 class AdminUser(UserMixin, db.Model):
