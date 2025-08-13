@@ -767,6 +767,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const foodName = button.getAttribute('data-food-name');
             const calories = button.getAttribute('data-calories');
             
+            console.log('点击删除按钮，meal_id:', mealId, 'meal_type:', mealType);
+            
             // 显示删除确认模态框
             showDeleteConfirmModal(mealId, mealType, foodName, calories);
         }
@@ -830,13 +832,12 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
             deleteModal.hide();
             
             // 显示成功消息
-            showToast(data.message, 'success');
+            showToast(data.message || '饮食记录已删除', 'success');
             
             // 移除页面中的记录元素
             removeMealFromDOM(currentDeleteMealId);
             
-            // 重新计算统计数据
-            updateDailyStats();
+            console.log('删除操作完成，meal_id:', currentDeleteMealId);
             
         } else {
             showToast(data.error || '删除失败，请稍后重试', 'error');
@@ -852,30 +853,66 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
         console.error('删除请求失败:', error);
         showToast('网络错误，请检查连接后重试', 'error');
         
+        // 关闭模态框
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteMealModal'));
+        if (deleteModal) {
+            deleteModal.hide();
+        }
+        
         currentDeleteMealId = null;
     });
 });
 
 // 从DOM中移除meal记录
 function removeMealFromDOM(mealId) {
-    // 查找包含删除按钮的meal容器
-    const deleteButton = document.querySelector(`[data-meal-id="${mealId}"].meal-delete-btn`);
-    if (deleteButton) {
-        // 向上查找meal记录的容器
-        let mealContainer = deleteButton.closest('.meal-item');
-        if (mealContainer) {
-            // 添加消失动画
-            mealContainer.style.transition = 'opacity 0.3s ease-out';
-            mealContainer.style.opacity = '0';
+    console.log('正在移除meal记录:', mealId);
+    
+    // 直接查找包含指定meal-id的meal-item容器
+    const mealContainer = document.querySelector(`.meal-item[data-meal-id="${mealId}"]`);
+    
+    if (mealContainer) {
+        console.log('找到meal容器，开始移除');
+        
+        // 获取要删除记录的热量数据，用于更新统计
+        const calories = parseInt(mealContainer.querySelector('.fw-bold')?.textContent?.match(/\d+/)?.[0] || '0');
+        
+        // 添加消失动画
+        mealContainer.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+        mealContainer.style.opacity = '0';
+        mealContainer.style.transform = 'scale(0.95)';
+        
+        // 动画完成后移除元素
+        setTimeout(() => {
+            // 获取父级日期分组容器
+            const dailyGroup = mealContainer.closest('.daily-meal-group');
             
-            // 动画完成后移除元素
-            setTimeout(() => {
-                mealContainer.remove();
+            // 移除meal记录
+            mealContainer.remove();
+            
+            // 检查该日期分组是否还有其他记录
+            if (dailyGroup) {
+                const remainingMeals = dailyGroup.querySelectorAll('.meal-item');
                 
-                // 检查是否还有当天的记录，如果没有了就显示空状态
-                checkEmptyDaySection();
-            }, 300);
-        }
+                if (remainingMeals.length === 0) {
+                    // 如果这是该日期的最后一条记录，移除整个日期分组
+                    dailyGroup.remove();
+                    console.log('移除了空的日期分组');
+                } else {
+                    // 更新该日期的热量总计
+                    updateDailyCalories(dailyGroup, -calories);
+                }
+            }
+            
+            // 检查是否需要显示空状态
+            checkEmptyState();
+            
+            console.log('meal记录移除完成');
+        }, 300);
+    } else {
+        console.error('未找到要删除的meal容器:', mealId);
+        // 作为后备方案，直接刷新页面
+        console.log('使用后备方案：刷新页面');
+        window.location.reload();
     }
 }
 
@@ -886,11 +923,63 @@ function checkEmptyDaySection() {
 }
 
 // 更新每日统计数据
+// 更新每日热量统计
+function updateDailyCalories(dailyGroup, calorieChange) {
+    const totalCaloriesElement = dailyGroup.querySelector('.fw-bold.text-danger.fs-5');
+    if (totalCaloriesElement) {
+        const currentTotal = parseInt(totalCaloriesElement.textContent.match(/\d+/)?.[0] || '0');
+        const newTotal = Math.max(0, currentTotal + calorieChange);
+        totalCaloriesElement.innerHTML = `<i class="fas fa-fire me-1"></i>${newTotal}`;
+        console.log(`更新日期总热量: ${currentTotal} -> ${newTotal}`);
+    }
+}
+
+// 检查是否需要显示空状态
+function checkEmptyState() {
+    const mealGroups = document.querySelectorAll('.daily-meal-group');
+    const emptyStateContainer = document.querySelector('.meal-history');
+    
+    if (mealGroups.length === 0 && emptyStateContainer) {
+        // 如果没有任何记录了，显示空状态
+        emptyStateContainer.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-utensils fs-1 text-muted mb-3"></i>
+                <p class="text-muted">还没有饮食记录</p>
+                <p class="small text-muted">开始记录你的第一餐吧！</p>
+            </div>
+        `;
+        console.log('显示空状态');
+    }
+}
+
 function updateDailyStats() {
-    // 重新计算页面上的统计信息
-    // 如果有每日热量总计等显示，在这里更新
-    // 可以通过重新请求数据或者重新计算页面上现有的数据来实现
+    // 重新计算页面上的统计信息（如营养目标进度等）
+    updateNutritionProgress();
     console.log('统计数据已更新');
+}
+
+// 更新营养目标进度
+function updateNutritionProgress() {
+    // 重新计算总热量
+    let totalCalories = 0;
+    document.querySelectorAll('.daily-meal-group .fw-bold.text-danger.fs-5').forEach(element => {
+        const calories = parseInt(element.textContent.match(/\d+/)?.[0] || '0');
+        totalCalories += calories;
+    });
+    
+    // 更新进度条（如果存在）
+    const caloriesProgress = document.getElementById('daily-calories-progress');
+    const caloriesProgressBar = document.getElementById('calories-progress-bar');
+    
+    if (caloriesProgress) {
+        const target = 2000; // 假设目标热量为2000
+        caloriesProgress.textContent = `${totalCalories}/${target}`;
+        
+        if (caloriesProgressBar) {
+            const percentage = Math.min(100, (totalCalories / target) * 100);
+            caloriesProgressBar.style.width = `${percentage}%`;
+        }
+    }
 }
 
 // 切换每日饮食详情显示
