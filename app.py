@@ -366,11 +366,21 @@ def dashboard():
         # 计算今日消耗热量
         total_burned = sum(ex.calories_burned or 0 for ex in today_exercises)
         
-        # 获取今日饮食记录
-        today_meals = MealLog.query.filter(
-            MealLog.user_id == current_user.id,
-            func.date(MealLog.created_at) == today
-        ).all()
+        # 获取今日饮食记录（使用安全查询避免字段缺失问题）
+        try:
+            today_meals = MealLog.query.filter(
+                MealLog.user_id == current_user.id,
+                func.date(MealLog.created_at) == today
+            ).all()
+        except Exception as meal_error:
+            # 如果查询失败（可能是字段缺失），使用只查询核心字段的方式
+            logger.warning(f"饮食记录查询失败，尝试兼容性查询: {meal_error}")
+            today_meals = db.session.query(
+                MealLog.id, MealLog.food_name, MealLog.calories, MealLog.meal_type, MealLog.created_at
+            ).filter(
+                MealLog.user_id == current_user.id,
+                func.date(MealLog.created_at) == today
+            ).all()
         
         # 计算今日摄入热量
         total_consumed = sum(meal.calories or 0 for meal in today_meals)
@@ -2065,9 +2075,51 @@ def generate_fallback_nutrition_analysis(food_items, meal_type):
         "motivation_message": motivation
     }
 
+def ensure_database_schema():
+    """确保数据库schema正确"""
+    try:
+        from sqlalchemy import inspect, text
+        
+        # 检查表是否存在
+        inspector = inspect(db.engine)
+        if 'meal_log' not in inspector.get_table_names():
+            return True  # 表不存在，create_all会创建
+            
+        # 检查必要字段是否存在
+        existing_columns = {col['name'] for col in inspector.get_columns('meal_log')}
+        required_fields = {
+            'food_description': 'TEXT',
+            'amount': 'FLOAT', 
+            'unit': 'VARCHAR(10)',
+            'meal_score': 'FLOAT'
+        }
+        
+        missing_fields = set(required_fields.keys()) - existing_columns
+        
+        if missing_fields:
+            logger.info(f"添加缺失的数据库字段: {', '.join(missing_fields)}")
+            
+            for field_name in missing_fields:
+                field_type = required_fields[field_name]
+                try:
+                    sql = f"ALTER TABLE meal_log ADD COLUMN {field_name} {field_type};"
+                    db.session.execute(text(sql))
+                    logger.info(f"添加字段: {field_name}")
+                except Exception as e:
+                    logger.warning(f"添加字段失败 {field_name}: {e}")
+                    
+            db.session.commit()
+            
+        return True
+        
+    except Exception as e:
+        logger.error(f"数据库schema检查失败: {e}")
+        return False
+
 def init_database():
     """初始化数据库函数"""
     print("🚀 初始化数据库...")
+    ensure_database_schema()
     db.create_all()
     create_default_admin()
     create_default_prompts()
