@@ -82,6 +82,7 @@ class User(UserMixin, db.Model):
     goals = db.relationship('FitnessGoal', backref='user', cascade='all, delete-orphan')
     exercise_logs = db.relationship('ExerciseLog', backref='user', cascade='all, delete-orphan')
     meal_logs = db.relationship('MealLog', backref='user', cascade='all, delete-orphan')
+    weight_logs = db.relationship('WeightLog', backref='user', cascade='all, delete-orphan')
 
 class UserProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -131,6 +132,8 @@ class ExerciseLog(db.Model):
     calories_burned = db.Column(db.Integer)
     intensity = db.Column(db.String(20))
     notes = db.Column(db.Text)
+    # 新增：运动描述字段（用于自然语言输入）
+    exercise_description = db.Column(db.Text)
     # AI分析状态: 'pending', 'completed', 'failed'
     analysis_status = db.Column(db.String(20), default='pending')
     # AI分析结果JSON数据
@@ -278,6 +281,52 @@ class PromptTemplate(db.Model):
     @property
     def type_display(self):
         return '运动分析' if self.type == 'exercise' else '其他分析'
+
+# 体重记录模型
+class WeightLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    weight = db.Column(db.Float, nullable=False)  # 体重 (kg)
+    bmi = db.Column(db.Float)  # BMI值 (自动计算)
+    notes = db.Column(db.Text)  # 备注
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # 确保每个用户每天只有一条记录
+    __table_args__ = (db.UniqueConstraint('user_id', 'date', name='unique_user_date'),)
+    
+    @property
+    def date_display(self):
+        """格式化日期显示"""
+        return self.date.strftime('%m-%d') if self.date else ''
+    
+    @property
+    def bmi_status(self):
+        """BMI状态描述"""
+        if not self.bmi:
+            return '未知'
+        if self.bmi < 18.5:
+            return '偏瘦'
+        elif self.bmi < 24:
+            return '正常'
+        elif self.bmi < 28:
+            return '偏胖'
+        else:
+            return '肥胖'
+    
+    @property
+    def bmi_color(self):
+        """BMI状态对应的颜色"""
+        if not self.bmi:
+            return 'secondary'
+        if self.bmi < 18.5:
+            return 'info'
+        elif self.bmi < 24:
+            return 'success'
+        elif self.bmi < 28:
+            return 'warning'
+        else:
+            return 'danger'
 
 @app.route('/')
 def index():
@@ -454,14 +503,34 @@ def exercise_log():
         if request.method == 'POST':
             try:
                 exercise_date_str = request.form['exercise_date']
-                exercise_type = request.form['exercise_type']
-                exercise_name = request.form['exercise_name']
-                duration = int(request.form['duration'])
+                exercise_description = request.form.get('exercise_description', '').strip()
                 notes = request.form.get('notes', '')
                 
+                # 检查是否是新的运动描述格式还是旧的分离格式
+                if exercise_description:
+                    # 新的运动描述格式
+                    if not exercise_description or len(exercise_description) < 10:
+                        flash('请详细描述你的运动情况（至少10个字符）！')
+                        return redirect(url_for('exercise_log'))
+                    
+                    # 使用AI解析运动描述（先设置默认值）
+                    exercise_type = 'unknown'  # 将由AI解析
+                    exercise_name = exercise_description[:50] + ('...' if len(exercise_description) > 50 else '')
+                    duration = 30  # 默认时长，将由AI解析
+                    
+                else:
+                    # 向后兼容：旧的分离格式
+                    exercise_type = request.form.get('exercise_type', 'unknown')
+                    exercise_name = request.form.get('exercise_name', '未知运动')
+                    try:
+                        duration = int(request.form.get('duration', 30))
+                    except ValueError:
+                        duration = 30
+                    exercise_description = None
+                
                 # 验证必要字段
-                if not all([exercise_date_str, exercise_type, exercise_name, duration]):
-                    flash('请填写所有必要的运动信息！')
+                if not exercise_date_str:
+                    flash('请选择运动日期！')
                     return redirect(url_for('exercise_log'))
                 
                 # 解析日期并转换为datetime（兼容生产环境）
@@ -495,6 +564,7 @@ def exercise_log():
                     calories_burned=calories_burned if analysis_status == 'completed' else None,  # 分析中时不设置热量
                     intensity=intensity if analysis_status == 'completed' else None,  # 分析中时不设置强度
                     notes=notes,
+                    exercise_description=exercise_description,  # 新增：运动描述
                     analysis_status=analysis_status  # 新增：分析状态
                 )
                 
@@ -973,20 +1043,32 @@ def analyze_exercise():
         
         # 支持两种模式：1)更新已存在记录 2)直接分析
         exercise_id = data.get('exercise_id')  # 如果提供说明需要更新已存在记录
+        exercise_description = data.get('exercise_description')
+        
+        # 向后兼容旧的分离格式
         exercise_type = data.get('exercise_type')
         exercise_name = data.get('exercise_name')
         duration_raw = data.get('duration')
         
-        if not all([exercise_type, exercise_name, duration_raw]):
+        # 检查是否有运动描述（新格式）或传统分离字段
+        if exercise_description:
+            # 新的自然语言格式，使用AI解析
+            if len(exercise_description.strip()) < 10:
+                return jsonify({'error': '运动描述过于简短，请详细描述'}), 400
+        elif not all([exercise_type, exercise_name, duration_raw]):
             return jsonify({'error': '缺少必要的运动信息'}), 400
         
-        # 确保duration是数字
-        try:
-            duration = int(duration_raw)
-            if duration <= 0:
-                return jsonify({'error': '运动时长必须大于0'}), 400
-        except (ValueError, TypeError):
-            return jsonify({'error': '运动时长必须是有效数字'}), 400
+        # 处理时长 - 对于自然语言格式，设置默认值
+        if exercise_description:
+            duration = 30  # 默认时长，AI会从描述中解析实际时长
+        else:
+            # 传统格式，确保duration是数字
+            try:
+                duration = int(duration_raw)
+                if duration <= 0:
+                    return jsonify({'error': '运动时长必须大于0'}), 400
+            except (ValueError, TypeError):
+                return jsonify({'error': '运动时长必须是有效数字'}), 400
         
         # 获取用户资料
         user_profile = getattr(current_user, 'profile', None)
@@ -1003,15 +1085,28 @@ def analyze_exercise():
             gender = user_profile.gender or '未知'
         
         # 调用Gemini AI进行运动分析
-        analysis_result = call_gemini_exercise_analysis(
-            exercise_type, exercise_name, duration, {
-                'age': age,
-                'gender': gender,
-                'weight': weight,
-                'height': height,
-                'activity_level': getattr(user_profile, 'activity_level', 'moderately_active')
-            }
-        )
+        if exercise_description:
+            # 新的自然语言描述分析
+            analysis_result = call_gemini_exercise_analysis(
+                None, None, None, {
+                    'age': age,
+                    'gender': gender,
+                    'weight': weight,
+                    'height': height,
+                    'activity_level': getattr(user_profile, 'activity_level', 'moderately_active')
+                }, exercise_description  # 传递运动描述
+            )
+        else:
+            # 传统的分离字段分析
+            analysis_result = call_gemini_exercise_analysis(
+                exercise_type, exercise_name, duration, {
+                    'age': age,
+                    'gender': gender,
+                    'weight': weight,
+                    'height': height,
+                    'activity_level': getattr(user_profile, 'activity_level', 'moderately_active')
+                }
+            )
         
         # 如果提供了exercise_id，更新已存在的记录
         if exercise_id:
@@ -1865,7 +1960,7 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
         # 返回模拟数据作为fallback
         return generate_fallback_nutrition_analysis(food_items, meal_type)
 
-def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_info):
+def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_info, exercise_description=None):
     """调用Gemini AI进行运动分析"""
     try:
         # 尝试获取Gemini模型
@@ -1873,7 +1968,7 @@ def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_i
             model = get_gemini_model()
         except Exception as e:
             logger.warning(f"Gemini API不可用，使用fallback: {e}")
-            return generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info)
+            return generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info, exercise_description)
         
         # 计算BMR
         if user_info['gender'] == '男' or user_info['gender'] == 'male':
@@ -1935,7 +2030,32 @@ def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_i
     "motivation_message": "激励话语"
 }'''
         
-        prompt = f"""
+        if exercise_description:
+            # 自然语言描述的prompt
+            prompt = f"""
+作为专业的运动健身教练和运动生理学专家，请分析用户的运动描述并提供专业的运动分析。
+
+用户信息：
+- 年龄：{user_info['age']}岁
+- 性别：{user_info['gender']}
+- 体重：{user_info['weight']}kg
+- 身高：{user_info['height']}cm
+- 活动水平：{activity_level_cn}
+- 基础代谢率：{bmr:.0f} kcal/天
+
+用户的运动描述：
+"{exercise_description}"
+
+请从这个描述中识别运动类型、具体运动内容、运动时长和强度，然后提供专业分析。
+请按照以下JSON格式返回专业的运动分析结果（只返回JSON，不要其他文字）：
+
+{json_template}
+
+请基于运动生理学和健身专业知识进行准确分析，确保数据科学可靠，fitness_score满分10分。
+"""
+        else:
+            # 传统分离字段的prompt
+            prompt = f"""
 作为专业的运动健身教练和运动生理学专家，请分析以下运动信息并提供专业的运动分析。
 
 用户信息：
@@ -1978,7 +2098,7 @@ def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_i
         print(f"Gemini运动分析错误: {e}")
         return generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info)
 
-def generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info):
+def generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, user_info, exercise_description=None):
     """生成运动分析的fallback数据"""
     # 计算卡路里消耗（传统方法）
     calories_burned, intensity = estimate_calories_burned(exercise_type, exercise_name, duration, user_info['weight'])
@@ -2730,6 +2850,197 @@ def admin_fix_specific_data():
         flash(f'修复失败: {str(e)}', 'error')
         
     return redirect(url_for('admin_settings'))
+
+# 体重记录API接口
+@app.route('/api/weight-log', methods=['GET', 'POST'])
+@login_required
+def weight_log_api():
+    """体重记录API"""
+    if request.method == 'POST':
+        try:
+            data = request.get_json() or {}
+            weight = data.get('weight')
+            date_str = data.get('date')
+            notes = data.get('notes', '')
+            
+            if not weight:
+                return jsonify({'success': False, 'error': '体重不能为空'}), 400
+            
+            try:
+                weight = float(weight)
+                if weight <= 0 or weight > 500:
+                    return jsonify({'success': False, 'error': '体重数据异常'}), 400
+            except ValueError:
+                return jsonify({'success': False, 'error': '体重格式错误'}), 400
+            
+            # 解析日期
+            from datetime import date, datetime as dt
+            if date_str:
+                try:
+                    record_date = dt.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    return jsonify({'success': False, 'error': '日期格式错误'}), 400
+            else:
+                record_date = date.today()
+            
+            # 计算BMI
+            bmi = None
+            if hasattr(current_user, 'profile') and current_user.profile and current_user.profile.height:
+                height_m = current_user.profile.height / 100  # 转换为米
+                bmi = round(weight / (height_m ** 2), 1)
+            
+            # 检查是否已存在当天记录
+            existing_record = WeightLog.query.filter_by(
+                user_id=current_user.id,
+                date=record_date
+            ).first()
+            
+            if existing_record:
+                # 更新现有记录
+                existing_record.weight = weight
+                existing_record.bmi = bmi
+                existing_record.notes = notes
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': '体重记录已更新',
+                    'data': {
+                        'id': existing_record.id,
+                        'date': existing_record.date.isoformat(),
+                        'weight': existing_record.weight,
+                        'bmi': existing_record.bmi,
+                        'bmi_status': existing_record.bmi_status,
+                        'notes': existing_record.notes
+                    }
+                })
+            else:
+                # 创建新记录
+                new_record = WeightLog(
+                    user_id=current_user.id,
+                    date=record_date,
+                    weight=weight,
+                    bmi=bmi,
+                    notes=notes
+                )
+                db.session.add(new_record)
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': '体重记录已保存',
+                    'data': {
+                        'id': new_record.id,
+                        'date': new_record.date.isoformat(),
+                        'weight': new_record.weight,
+                        'bmi': new_record.bmi,
+                        'bmi_status': new_record.bmi_status,
+                        'notes': new_record.notes
+                    }
+                })
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"保存体重记录失败: {e}")
+            return jsonify({'success': False, 'error': '保存失败，请稍后重试'}), 500
+    
+    else:  # GET请求 - 获取体重记录
+        try:
+            days = request.args.get('days', 30, type=int)  # 默认获取30天的记录
+            
+            # 获取最近N天的体重记录
+            from datetime import date, timedelta
+            start_date = date.today() - timedelta(days=days)
+            
+            weight_logs = WeightLog.query.filter(
+                WeightLog.user_id == current_user.id,
+                WeightLog.date >= start_date
+            ).order_by(WeightLog.date.desc()).all()
+            
+            records = []
+            for record in weight_logs:
+                records.append({
+                    'id': record.id,
+                    'date': record.date.isoformat(),
+                    'weight': record.weight,
+                    'bmi': record.bmi,
+                    'bmi_status': record.bmi_status,
+                    'notes': record.notes,
+                    'date_display': record.date_display
+                })
+            
+            return jsonify({
+                'success': True,
+                'data': records,
+                'count': len(records)
+            })
+            
+        except Exception as e:
+            logger.error(f"获取体重记录失败: {e}")
+            return jsonify({'success': False, 'error': '获取数据失败'}), 500
+
+@app.route('/api/weight-stats')
+@login_required 
+def weight_stats_api():
+    """体重统计API"""
+    try:
+        from datetime import date, timedelta
+        
+        # 获取不同时间段的体重数据
+        today = date.today()
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
+        
+        # 最近的体重记录
+        latest_record = WeightLog.query.filter_by(user_id=current_user.id).order_by(WeightLog.date.desc()).first()
+        
+        # 一周前的体重记录
+        week_record = WeightLog.query.filter(
+            WeightLog.user_id == current_user.id,
+            WeightLog.date <= week_ago
+        ).order_by(WeightLog.date.desc()).first()
+        
+        # 一月前的体重记录  
+        month_record = WeightLog.query.filter(
+            WeightLog.user_id == current_user.id,
+            WeightLog.date <= month_ago
+        ).order_by(WeightLog.date.desc()).first()
+        
+        # 计算变化
+        week_change = None
+        month_change = None
+        
+        if latest_record:
+            if week_record:
+                week_change = round(latest_record.weight - week_record.weight, 1)
+            if month_record:
+                month_change = round(latest_record.weight - month_record.weight, 1)
+        
+        # 获取目标体重 (从用户的健身目标中)
+        target_weight = None
+        distance_to_goal = None
+        active_goal = FitnessGoal.query.filter_by(user_id=current_user.id, is_active=True).first()
+        if active_goal and active_goal.target_weight and latest_record:
+            target_weight = active_goal.target_weight
+            distance_to_goal = round(latest_record.weight - target_weight, 1)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'latest_weight': latest_record.weight if latest_record else None,
+                'latest_bmi': latest_record.bmi if latest_record else None,
+                'latest_bmi_status': latest_record.bmi_status if latest_record else None,
+                'week_change': week_change,
+                'month_change': month_change,
+                'target_weight': target_weight,
+                'distance_to_goal': distance_to_goal,
+                'latest_date': latest_record.date.isoformat() if latest_record else None
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"获取体重统计失败: {e}")
+        return jsonify({'success': False, 'error': '获取统计数据失败'}), 500
 
 # 本地开发环境初始化
 if __name__ == '__main__':

@@ -22,35 +22,10 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="exercise_type" class="form-label">运动类型</label>
-                        <select class="form-select" id="exercise_type" name="exercise_type" required>
-                            <option value="">选择运动类型</option>
-                            <option value="cardio">有氧运动</option>
-                            <option value="strength">力量训练</option>
-                            <option value="yoga">瑜伽</option>
-                            <option value="sports">球类运动</option>
-                            <option value="walking">步行</option>
-                            <option value="running">跑步</option>
-                            <option value="cycling">骑行</option>
-                            <option value="swimming">游泳</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="exercise_name" class="form-label">具体运动</label>
-                        <input type="text" class="form-control" id="exercise_name" name="exercise_name" 
-                               placeholder="如：晨跑、哑铃训练、瑜伽等" required>
-                        <div class="form-text">请输入具体的运动名称</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="duration" class="form-label">持续时间</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="duration" name="duration" 
-                                   min="1" max="300" required>
-                            <span class="input-group-text">分钟</span>
-                        </div>
-                        <div class="form-text">系统将根据运动类型和时长自动判断运动强度</div>
+                        <label for="exercise_description" class="form-label">描述你的运动</label>
+                        <textarea class="form-control" id="exercise_description" name="exercise_description" 
+                                rows="4" placeholder="请详细描述你的运动情况，例如：今天在健身房做了30分钟力量训练，主要练胸和手臂，感觉很累但很充实" required></textarea>
+                        <div class="form-text">AI将自动分析你的运动类型、强度和时长，并提供专业建议</div>
                     </div>
                     
                     <!-- AI分析结果区域 -->
@@ -218,9 +193,9 @@
                     
                     <div class="d-grid">
                         <button type="button" class="btn btn-gradient" id="aiAnalysisSubmit">
-                            <i class="fas fa-robot me-2"></i>AI分析运动打卡
+                            <i class="fas fa-robot me-2"></i>AI智能运动分析
                         </button>
-                        <div class="form-text text-center mt-2">AI智能分析并完成打卡记录</div>
+                        <div class="form-text text-center mt-2">AI将解析你的运动描述并生成专业分析报告</div>
                     </div>
                 </form>
             </div>
@@ -414,8 +389,7 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const exerciseType = document.getElementById('exercise_type');
-    const duration = document.getElementById('duration');
+    const exerciseDescription = document.getElementById('exercise_description');
     const exerciseDate = document.getElementById('exercise_date');
     const aiAnalysisSubmit = document.getElementById('aiAnalysisSubmit');
     
@@ -432,14 +406,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // 统一AI分析打卡处理函数
     async function handleAiAnalysisCheckin() {
         // 1. 表单验证
-        const exerciseTypeValue = exerciseType.value;
-        const exerciseName = document.getElementById('exercise_name').value.trim();
-        const durationValue = duration.value;
+        const exerciseDescriptionValue = exerciseDescription.value.trim();
         const dateValue = exerciseDate.value;
         const notesValue = document.getElementById('notes').value.trim();
         
-        if (!exerciseTypeValue || !exerciseName || !durationValue || !dateValue) {
-            showToast('请填写完整的运动信息', 'warning');
+        if (!exerciseDescriptionValue || !dateValue) {
+            showToast('请填写运动描述和日期', 'warning');
+            return;
+        }
+        
+        if (exerciseDescriptionValue.length < 10) {
+            showToast('请详细描述你的运动情况（至少10个字符）', 'warning');
             return;
         }
         
@@ -457,9 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 credentials: 'same-origin',
                 body: new URLSearchParams({
                     'exercise_date': dateValue,
-                    'exercise_type': exerciseTypeValue,
-                    'exercise_name': exerciseName,
-                    'duration': durationValue,
+                    'exercise_description': exerciseDescriptionValue,
                     'notes': notesValue,
                     'analysis_status': 'pending'
                 })
@@ -475,9 +450,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 4. 立即添加"分析中"状态的记录到界面
             addPendingExerciseItem({
                 id: exerciseId,
-                exercise_name: exerciseName,
-                exercise_type: exerciseType.options[exerciseType.selectedIndex].text,
-                duration: durationValue,
+                exercise_description: exerciseDescriptionValue,
                 date: new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }),
                 notes: notesValue
             });
@@ -493,9 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     exercise_id: exerciseId,
-                    exercise_type: exerciseTypeValue,
-                    exercise_name: exerciseName,
-                    duration: parseInt(durationValue)
+                    exercise_description: exerciseDescriptionValue
                 })
             });
             
@@ -571,8 +542,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="col-4 text-center border-end">
                     <div class="fw-bold text-success">🏃</div>
-                    <div class="small fw-bold">${data.exercise_type}</div>
-                    <div class="tiny text-muted">${data.exercise_name}</div>
+                    <div class="small fw-bold">AI解析中</div>
+                    <div class="tiny text-muted">智能识别</div>
                 </div>
                 <div class="col-4 text-center">
                     ${statusHTML}
@@ -582,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <!-- 运动详情 -->
             <div class="exercise-details">
                 <div class="small text-muted">
-                    📋 ${data.exercise_name} · ${data.duration}分钟 · 智能分析强度中...
+                    📋 ${data.exercise_description.length > 50 ? data.exercise_description.substring(0, 50) + '...' : data.exercise_description}
                 </div>
                 ${data.notes ? `<div class="mt-1 small text-muted">💭 ${data.notes}</div>` : ''}
             </div>
@@ -704,10 +675,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 重置表单
     function resetForm() {
-        document.getElementById('exercise_name').value = '';
-        document.getElementById('duration').value = '';
+        exerciseDescription.value = '';
         document.getElementById('notes').value = '';
-        exerciseType.selectedIndex = 0;
     }
     
     // 简单的Toast通知
@@ -744,24 +713,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     
-    // 运动类型对应的常见运动名称
-    const exerciseNames = {
-        'cardio': ['有氧操', '椭圆机', '动感单车', '踏步机'],
-        'strength': ['哑铃训练', '杠铃训练', '器械训练', '自重训练'],
-        'yoga': ['哈他瑜伽', '流瑜伽', '阴瑜伽', '热瑜伽'],
-        'sports': ['篮球', '足球', '羽毛球', '乒乓球', '网球'],
-        'walking': ['快走', '散步', '爬楼梯', '徒步'],
-        'running': ['慢跑', '快跑', '间歇跑', '马拉松'],
-        'cycling': ['公路骑行', '山地骑行', '室内单车'],
-        'swimming': ['自由泳', '蛙泳', '仰泳', '蝶泳']
-    };
-    
-    exerciseType.addEventListener('change', function() {
-        const exerciseName = document.getElementById('exercise_name');
-        if (this.value && exerciseNames[this.value]) {
-            exerciseName.placeholder = `如：${exerciseNames[this.value].join('、')}`;
-        }
-    });
     
     function displayExerciseAnalysisResults(analysis) {
         // 基础运动数据 - 适配新的AI数据结构

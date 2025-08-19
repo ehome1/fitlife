@@ -183,6 +183,141 @@
     </div>
 </div>
 
+<!-- 体重记录管理模块 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-weight me-2"></i>体重记录管理
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <!-- 今日体重记录 -->
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-edit me-2"></i>今日体重记录
+                                </h6>
+                                
+                                <div class="mb-3">
+                                    <label for="todayWeight" class="form-label">当前体重 (kg)</label>
+                                    <input type="number" class="form-control" id="todayWeight" 
+                                           step="0.1" min="30" max="200" placeholder="输入体重">
+                                </div>
+                                
+                                <div class="mb-3" id="bmiDisplay" style="display: none;">
+                                    <div class="alert alert-info mb-0">
+                                        <small>BMI: <span id="bmiValue">--</span> (<span id="bmiStatus">--</span>)</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <small class="text-muted">记录时间: <span id="recordTime">--:--</span></small>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button class="btn btn-primary" id="saveWeightBtn">
+                                        <i class="fas fa-save me-2"></i>保存记录
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 体重统计信息 -->
+                        <div class="card bg-light mt-3">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-chart-line me-2"></i>体重统计信息
+                                </h6>
+                                
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <div class="fw-bold text-primary" id="weekChange">--</div>
+                                        <small class="text-muted">本周变化</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="fw-bold text-info" id="monthChange">--</div>
+                                        <small class="text-muted">本月变化</small>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <div class="fw-bold text-success" id="targetWeight">--</div>
+                                        <small class="text-muted">目标体重</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="fw-bold text-warning" id="distanceToGoal">--</div>
+                                        <small class="text-muted">距离目标</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3 text-center">
+                                    <small class="text-success">
+                                        <i class="fas fa-star me-1"></i>
+                                        <span id="progressMessage">加油！</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 体重变化趋势图 -->
+                    <div class="col-md-5">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-chart-area me-2"></i>体重变化趋势
+                                </h6>
+                                
+                                <div class="mb-3">
+                                    <canvas id="weightChart" width="400" height="200"></canvas>
+                                </div>
+                                
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-outline-primary active" data-days="7">7天</button>
+                                    <button type="button" class="btn btn-outline-primary" data-days="30">30天</button>
+                                    <button type="button" class="btn btn-outline-primary" data-days="90">90天</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 历史记录 -->
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-history me-2"></i>历史记录
+                                </h6>
+                                
+                                <div id="weightHistory" style="max-height: 300px; overflow-y: auto;">
+                                    <!-- 历史记录将在这里动态加载 -->
+                                    <div class="text-center text-muted py-3">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        <small>加载中...</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3 d-grid">
+                                    <button class="btn btn-outline-secondary btn-sm" id="viewAllRecords">
+                                        查看全部记录
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 目标进度 -->
 {% if active_goal %}
 <div class="row mt-4">
@@ -237,5 +372,310 @@ function updateCurrentTime() {
 
 // 每分钟更新时间
 setInterval(updateCurrentTime, 60000);
+
+// 体重记录功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 元素引用
+    const todayWeightInput = document.getElementById('todayWeight');
+    const bmiDisplay = document.getElementById('bmiDisplay');
+    const bmiValue = document.getElementById('bmiValue');
+    const bmiStatus = document.getElementById('bmiStatus');
+    const recordTime = document.getElementById('recordTime');
+    const saveWeightBtn = document.getElementById('saveWeightBtn');
+    const weightHistory = document.getElementById('weightHistory');
+    
+    // 统计信息元素
+    const weekChange = document.getElementById('weekChange');
+    const monthChange = document.getElementById('monthChange');
+    const targetWeight = document.getElementById('targetWeight');
+    const distanceToGoal = document.getElementById('distanceToGoal');
+    const progressMessage = document.getElementById('progressMessage');
+    
+    // Chart.js变量
+    let weightChart = null;
+    let currentDays = 7;
+    
+    // 初始化
+    updateRecordTime();
+    loadWeightData();
+    
+    // 更新记录时间
+    function updateRecordTime() {
+        const now = new Date();
+        recordTime.textContent = now.toLocaleTimeString('zh-CN', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    }
+    setInterval(updateRecordTime, 60000); // 每分钟更新
+    
+    // 体重输入变化时计算BMI
+    todayWeightInput.addEventListener('input', function() {
+        const weight = parseFloat(this.value);
+        if (weight && weight > 0) {
+            calculateAndShowBMI(weight);
+        } else {
+            bmiDisplay.style.display = 'none';
+        }
+    });
+    
+    // 计算并显示BMI
+    function calculateAndShowBMI(weight) {
+        // 这里需要用户的身高信息，可以从用户资料中获取
+        // 暂时使用模拟数据，实际应该从后端获取
+        const height = 170; // cm，应该从用户profile获取
+        
+        if (height && height > 0) {
+            const heightInMeters = height / 100;
+            const bmi = (weight / (heightInMeters * heightInMeters)).toFixed(1);
+            
+            let status = '';
+            let colorClass = '';
+            
+            if (bmi < 18.5) {
+                status = '偏瘦';
+                colorClass = 'info';
+            } else if (bmi < 24) {
+                status = '正常';
+                colorClass = 'success';
+            } else if (bmi < 28) {
+                status = '偏胖';
+                colorClass = 'warning';
+            } else {
+                status = '肥胖';
+                colorClass = 'danger';
+            }
+            
+            bmiValue.textContent = bmi;
+            bmiStatus.textContent = status;
+            bmiDisplay.className = `mb-3 alert alert-${colorClass}`;
+            bmiDisplay.style.display = 'block';
+        }
+    }
+    
+    // 保存体重记录
+    saveWeightBtn.addEventListener('click', async function() {
+        const weight = parseFloat(todayWeightInput.value);
+        
+        if (!weight || weight <= 0) {
+            showToast('请输入有效的体重数值', 'warning');
+            return;
+        }
+        
+        if (weight < 30 || weight > 200) {
+            showToast('体重数值不在合理范围内（30-200kg）', 'warning');
+            return;
+        }
+        
+        // 显示保存状态
+        saveWeightBtn.disabled = true;
+        saveWeightBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>保存中...';
+        
+        try {
+            const response = await fetch('/api/weight-log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    weight: weight,
+                    date: new Date().toISOString().split('T')[0],
+                    notes: ''
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(result.message, 'success');
+                loadWeightData(); // 重新加载数据
+            } else {
+                showToast(result.error || '保存失败', 'error');
+            }
+        } catch (error) {
+            console.error('保存体重记录失败:', error);
+            showToast('网络错误，请稍后重试', 'error');
+        } finally {
+            saveWeightBtn.disabled = false;
+            saveWeightBtn.innerHTML = '<i class="fas fa-save me-2"></i>保存记录';
+        }
+    });
+    
+    // 加载体重数据
+    async function loadWeightData() {
+        try {
+            // 加载统计数据
+            const statsResponse = await fetch('/api/weight-stats');
+            if (statsResponse.ok) {
+                const stats = await statsResponse.json();
+                updateStatsDisplay(stats.data);
+            }
+            
+            // 加载历史数据
+            const historyResponse = await fetch(`/api/weight-log?days=${currentDays}`);
+            if (historyResponse.ok) {
+                const history = await historyResponse.json();
+                updateHistoryDisplay(history.data);
+                updateWeightChart(history.data);
+            }
+        } catch (error) {
+            console.error('加载体重数据失败:', error);
+        }
+    }
+    
+    // 更新统计显示
+    function updateStatsDisplay(stats) {
+        weekChange.textContent = stats.week_change ? `${stats.week_change > 0 ? '+' : ''}${stats.week_change}kg` : '--';
+        monthChange.textContent = stats.month_change ? `${stats.month_change > 0 ? '+' : ''}${stats.month_change}kg` : '--';
+        targetWeight.textContent = stats.target_weight ? `${stats.target_weight}kg` : '--';
+        distanceToGoal.textContent = stats.distance_to_goal ? `${Math.abs(stats.distance_to_goal)}kg` : '--';
+        
+        // 更新进度消息
+        if (stats.distance_to_goal) {
+            if (Math.abs(stats.distance_to_goal) < 1) {
+                progressMessage.textContent = '已接近目标！';
+            } else if (stats.distance_to_goal > 0) {
+                progressMessage.textContent = '继续减重加油！';
+            } else {
+                progressMessage.textContent = '继续增重加油！';
+            }
+        }
+        
+        // 如果有最新体重，填入输入框
+        if (stats.latest_weight) {
+            todayWeightInput.value = stats.latest_weight;
+            calculateAndShowBMI(stats.latest_weight);
+        }
+    }
+    
+    // 更新历史记录显示
+    function updateHistoryDisplay(records) {
+        if (!records || records.length === 0) {
+            weightHistory.innerHTML = '<div class="text-center text-muted py-3"><small>暂无记录</small></div>';
+            return;
+        }
+        
+        const historyHTML = records.slice(0, 10).map(record => `
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
+                <div>
+                    <small class="fw-bold">${record.date_display}</small>
+                    <br>
+                    <small class="text-muted">${record.weight}kg</small>
+                </div>
+                <div>
+                    <span class="badge bg-${record.bmi ? (record.bmi < 18.5 ? 'info' : record.bmi < 24 ? 'success' : record.bmi < 28 ? 'warning' : 'danger') : 'secondary'}">${record.bmi_status}</span>
+                </div>
+            </div>
+        `).join('');
+        
+        weightHistory.innerHTML = historyHTML;
+    }
+    
+    // 更新体重趋势图
+    function updateWeightChart(records) {
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        
+        // 销毁现有图表
+        if (weightChart) {
+            weightChart.destroy();
+        }
+        
+        // 准备数据
+        const labels = [];
+        const weights = [];
+        
+        // 按日期排序
+        const sortedRecords = records.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        sortedRecords.forEach(record => {
+            labels.push(record.date_display);
+            weights.push(record.weight);
+        });
+        
+        // 创建图表
+        weightChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '体重 (kg)',
+                    data: weights,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.2,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        hoverRadius: 6
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+    }
+    
+    // 时间范围切换
+    document.querySelectorAll('[data-days]').forEach(button => {
+        button.addEventListener('click', function() {
+            // 更新按钮状态
+            document.querySelectorAll('[data-days]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // 更新当前天数并重新加载数据
+            currentDays = parseInt(this.dataset.days);
+            loadWeightData();
+        });
+    });
+    
+    // Toast通知函数
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'warning'} position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'warning'} me-2"></i>
+            ${message}
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }
+});
 </script>
 {% endblock %}
