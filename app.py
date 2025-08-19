@@ -74,11 +74,23 @@ def init_database_schema():
                 logger.warning(f"添加exercise_description字段失败: {e}")
             db.session.rollback()
 
-# 在应用启动时初始化数据库schema
-try:
-    init_database_schema()
-except Exception as e:
-    logger.warning(f"数据库schema初始化失败: {e}")
+# 延迟初始化数据库schema（在第一次请求时执行）
+_schema_initialized = False
+
+def ensure_schema_initialized():
+    """确保数据库schema已初始化"""
+    global _schema_initialized
+    if not _schema_initialized:
+        try:
+            init_database_schema()
+            _schema_initialized = True
+        except Exception as e:
+            logger.warning(f"数据库schema初始化失败: {e}")
+
+@app.before_request
+def before_request():
+    """在每个请求前确保数据库schema已初始化"""
+    ensure_schema_initialized()
 
 @login_manager.user_loader
 def load_user(user_id):
