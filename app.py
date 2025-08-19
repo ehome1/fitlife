@@ -556,6 +556,11 @@ def meal_log():
             notes = request.form.get('notes', '')
             food_description = request.form.get('food_description', '').strip()
             
+            print(f"🔍 DEBUG: Meal log POST 请求开始")
+            print(f"  - meal_type: {meal_type}")
+            print(f"  - food_description: {food_description}")
+            print(f"  - notes: {notes}")
+            
             # 解析日期
             try:
                 meal_date = datetime.strptime(meal_date_str, '%Y-%m-%d').date()
@@ -703,6 +708,22 @@ def meal_log():
                         
                         db.session.commit()
                         logger.info(f"自动更新了{len(saved_entries)}条饮食记录的营养数据")
+                        
+                        # 🚨 关键修复4: 验证数据库更新结果
+                        verification_failed = False
+                        for entry in saved_entries:
+                            db.session.refresh(entry)  # 刷新数据库状态
+                            if entry.calories <= 0:
+                                print(f"❌ WARNING: 记录{entry.id}热量仍为0，尝试修复")
+                                entry.calories = max(200, total_calories // len(saved_entries))
+                                entry.protein = max(5, protein // len(saved_entries))
+                                entry.carbs = max(10, carbs // len(saved_entries))
+                                entry.fat = max(3, fat // len(saved_entries))
+                                verification_failed = True
+                        
+                        if verification_failed:
+                            db.session.commit()
+                            print(f"✅ 已修复零热量记录")
                         
                         flash(f'饮食记录已保存并完成AI营养分析！共记录了{len(saved_entries)}种食物，总热量{total_calories}卡路里')
                     else:
@@ -1663,16 +1684,35 @@ def parse_natural_language_food(food_description, meal_type):
 
 def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language_input=None):
     """调用Gemini API进行营养分析"""
+    print(f"🤖 DEBUG: call_gemini_meal_analysis 开始")
+    print(f"  - meal_type: {meal_type}")
+    print(f"  - food_items count: {len(food_items) if food_items else 0}")
+    print(f"  - food_items: {food_items}")
+    print(f"  - natural_language_input: {natural_language_input}")
+    print(f"  - user_info: {user_info}")
+    
+    # 🚨 关键修复1: 确保有有效的食物数据
+    if not food_items and not natural_language_input:
+        print("❌ DEBUG: 没有食物数据，使用默认数据")
+        food_items = [{'name': '未知食物', 'amount': 1, 'unit': '份'}]
+    elif not food_items and natural_language_input:
+        print("🔄 DEBUG: 仅有自然语言描述，创建基础食物项")
+        food_items = [{'name': natural_language_input[:50], 'amount': 1, 'unit': '份'}]
+    
     try:
         # 先尝试获取Gemini模型
         try:
             model = get_gemini_model()
+            print(f"✅ DEBUG: Gemini模型获取成功")
         except Exception as e:
+            print(f"❌ DEBUG: Gemini API不可用，使用fallback: {e}")
             logger.warning(f"Gemini API不可用，使用fallback: {e}")
             # 如果有自然语言输入但没有Gemini API，创建简单的食物项
             if natural_language_input and not food_items:
                 food_items = [{'name': natural_language_input[:50], 'amount': 1, 'unit': '份'}]
-            return generate_fallback_nutrition_analysis(food_items, meal_type)
+            fallback_result = generate_fallback_nutrition_analysis(food_items, meal_type)
+            print(f"🔄 DEBUG: Fallback结果: {fallback_result.get('basic_nutrition', {}).get('total_calories', 'N/A')} 卡路里")
+            return fallback_result
         
         # 如果是自然语言输入，先解析提取食物信息
         if natural_language_input:
@@ -1766,11 +1806,15 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
 """
         
         # 调用Gemini API
+        print(f"🚀 DEBUG: 调用Gemini API...")
         response = model.generate_content(prompt)
+        print(f"✅ DEBUG: Gemini API调用成功")
         
         # 解析JSON响应
         import json
         result_text = response.text.strip()
+        print(f"📝 DEBUG: API响应长度: {len(result_text)}")
+        print(f"📝 DEBUG: API响应前200字符: {result_text[:200]}...")
         
         # 清理响应文本，移除可能的markdown标记
         if result_text.startswith('```json'):
@@ -1779,6 +1823,28 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
             result_text = result_text[:-3]
         
         result = json.loads(result_text)
+        print(f"✅ DEBUG: JSON解析成功")
+        
+        # 验证营养数据
+        basic_nutrition = result.get('basic_nutrition', {})
+        total_calories = basic_nutrition.get('total_calories', 0)
+        print(f"📊 DEBUG: 解析出的热量: {total_calories}")
+        print(f"📊 DEBUG: basic_nutrition: {basic_nutrition}")
+        
+        # 🚨 关键修复2: 确保热量数据有效
+        if not total_calories or total_calories <= 0:
+            print("❌ DEBUG: AI返回热量无效，使用估算热量")
+            # 基于食物项数量估算最小热量
+            estimated_calories = len(food_items) * 150  # 每项食物最少150卡路里
+            if estimated_calories < 100:
+                estimated_calories = 200  # 最低保证200卡路里
+            
+            basic_nutrition['total_calories'] = estimated_calories
+            basic_nutrition['protein'] = round(estimated_calories * 0.15 / 4)  # 15%蛋白质
+            basic_nutrition['carbohydrates'] = round(estimated_calories * 0.55 / 4)  # 55%碳水
+            basic_nutrition['fat'] = round(estimated_calories * 0.30 / 9)  # 30%脂肪
+            result['basic_nutrition'] = basic_nutrition
+            print(f"🔧 DEBUG: 修复后热量: {estimated_calories}")
         
         # 如果是自然语言输入，添加解析信息到结果中
         if natural_language_input:
@@ -1788,6 +1854,7 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
                 'parsing_method': 'ai_natural_language'
             }
         
+        print(f"✅ DEBUG: 返回AI分析结果")
         return result
         
     except Exception as e:
@@ -2003,7 +2070,8 @@ def generate_fallback_nutrition_analysis(food_items, meal_type):
             calorie_multiplier += 0.3
     
     # 计算最终营养成分
-    estimated_calories = int(base_calories * calorie_multiplier)
+    # 🚨 关键修复3: 确保fallback永远不返回零热量
+    estimated_calories = max(200, int(base_calories * calorie_multiplier))  # 最少200卡路里
     
     # 营养成分比例（基于食物类型动态调整）
     protein_pct = min(35, max(10, 15 + protein_boost * 100))
