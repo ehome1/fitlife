@@ -57,6 +57,29 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+def init_database_schema():
+    """初始化数据库schema，添加缺失的字段"""
+    with app.app_context():
+        try:
+            # 尝试添加exercise_description字段
+            from sqlalchemy import text
+            db.session.execute(text("ALTER TABLE exercise_log ADD COLUMN exercise_description TEXT"))
+            db.session.commit()
+            logger.info("✅ exercise_description字段添加成功")
+        except Exception as e:
+            error_msg = str(e).lower()
+            if 'already exists' in error_msg or 'duplicate column' in error_msg or 'duplicat' in error_msg:
+                logger.info("✅ exercise_description字段已存在")
+            else:
+                logger.warning(f"添加exercise_description字段失败: {e}")
+            db.session.rollback()
+
+# 在应用启动时初始化数据库schema
+try:
+    init_database_schema()
+except Exception as e:
+    logger.warning(f"数据库schema初始化失败: {e}")
+
 @login_manager.user_loader
 def load_user(user_id):
     # 首先尝试加载普通用户
@@ -158,6 +181,14 @@ class ExerciseLog(db.Model):
             'swimming': '游泳'
         }
         return type_map.get(self.exercise_type, self.exercise_type)
+    
+    @property
+    def safe_exercise_description(self):
+        """安全获取运动描述，处理字段可能不存在的情况"""
+        try:
+            return getattr(self, 'exercise_description', None) or ''
+        except:
+            return ''
     
     @property
     def intensity_display(self):
@@ -404,13 +435,25 @@ def dashboard():
             is_active=True
         ).first()
         
-        # 获取今日运动记录（使用created_at字段兼容生产环境）
+        # 获取今日运动记录（安全查询避免字段缺失问题）
         today = datetime.now(timezone.utc).date()
         from sqlalchemy import func
-        today_exercises = ExerciseLog.query.filter(
-            ExerciseLog.user_id == current_user.id,
-            func.date(ExerciseLog.created_at) == today
-        ).all()
+        try:
+            today_exercises = ExerciseLog.query.filter(
+                ExerciseLog.user_id == current_user.id,
+                func.date(ExerciseLog.created_at) == today
+            ).all()
+        except Exception as exercise_error:
+            # 如果查询失败（可能是exercise_description字段缺失），使用只查询核心字段的方式
+            logger.warning(f"运动记录查询失败，尝试兼容性查询: {exercise_error}")
+            today_exercises = db.session.query(
+                ExerciseLog.id, ExerciseLog.user_id, ExerciseLog.exercise_name, 
+                ExerciseLog.duration, ExerciseLog.calories_burned, ExerciseLog.intensity,
+                ExerciseLog.created_at
+            ).filter(
+                ExerciseLog.user_id == current_user.id,
+                func.date(ExerciseLog.created_at) == today
+            ).all()
         
         # 计算今日消耗热量
         total_burned = sum(ex.calories_burned or 0 for ex in today_exercises)
