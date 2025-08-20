@@ -23,6 +23,47 @@ logger = logging.getLogger(__name__)
 # 简单的内存缓存用于AI分析结果
 ai_analysis_cache = {}
 
+# 每日鼓励名人名言库
+DAILY_QUOTES = [
+    "健康是人生的第一财富。—— 爱默生",
+    "身体是革命的本钱，健康是成功的基石。—— 毛泽东",
+    "生命在于运动，健康在于坚持。—— 伏尔泰",
+    "健康的身体是智慧和快乐的源泉。—— 亚里士多德",
+    "保持身体健康是一种责任，否则我们无法保持头脑清晰和内心坚强。—— 布达",
+    "健康不是身体状况的问题，而是精神状况的问题。—— 圣雄甘地",
+    "要快乐，要开朗，要坚韧，要温暖，这和性格无关。—— 村上春树",
+    "每一个成功者都有一个开始。勇于开始，才能找到成功的路。—— 德谟克利特",
+    "成功的秘诀在于坚持自己的目标和信念。—— 迪斯雷利",
+    "健康是智慧的条件，是愉快的标志。—— 爱默生",
+    "一个人的身体健康是1，而财富、感情、事业、家庭...都是1后面的0。—— 李嘉诚",
+    "运动是一切生命的源泉。—— 达·芬奇",
+    "生活就像骑自行车，要想保持平衡就要不断运动。—— 爱因斯坦",
+    "健康的身体乃是灵魂的客厅，有病的身体则是灵魂的禁闭室。—— 培根",
+    "当身体依旧强健的时候，就已经在人生的路途上蹒跚了，这是灵魂的耻辱。—— 卢梭",
+    "健康是最好的天赋，知足为最大的财富，信任为最佳的品德。—— 释迦牟尼",
+    "有规律的生活原是健康与长寿的秘诀。—— 巴尔扎克",
+    "快乐最利于健康。—— 爱迪生",
+    "健康的价值，贵重无比。它是人类为了追求它而惟一值得付出时间、血汗、劳动、财富。—— 蒙田",
+    "保持健康的秘密就是适当地节制食物、饮料、睡眠和爱情。—— 雨果",
+    "理想的人是品德、健康、才能三位一体的人。—— 高尔基",
+    "健康是人生第一财富。—— 爱默生",
+    "健康胜过财富。—— 司各特",
+    "健康是成功的资本。—— 拿破仑",
+    "今天不养生，明天养医生。—— 中国古训"
+]
+
+def get_daily_quote():
+    """获取每日鼓励名言"""
+    import random
+    from datetime import date
+    
+    # 使用日期作为随机种子，确保同一天获取相同的名言
+    today = date.today()
+    seed = today.year * 10000 + today.month * 100 + today.day
+    random.seed(seed)
+    
+    return random.choice(DAILY_QUOTES)
+
 app = Flask(__name__)
 
 # 配置根据环境变量设置
@@ -467,8 +508,43 @@ def dashboard():
                 func.date(ExerciseLog.created_at) == today
             ).all()
         
-        # 计算今日消耗热量
-        total_burned = sum(ex.calories_burned or 0 for ex in today_exercises)
+        # 计算今日消耗热量（运动消耗 + 基础代谢）
+        exercise_burned = sum(ex.calories_burned or 0 for ex in today_exercises)
+        
+        # 计算基础代谢率(BMR)
+        bmr = 0
+        if profile:
+            if profile.bmr:
+                # 如果已存储BMR，直接使用
+                bmr = profile.bmr
+            elif profile.height and profile.age and profile.gender:
+                # 使用Mifflin-St Jeor公式计算BMR
+                # 获取最新体重
+                latest_weight = profile.weight
+                if not latest_weight:
+                    # 尝试从体重记录获取最新体重
+                    latest_weight_log = WeightLog.query.filter_by(user_id=current_user.id).order_by(WeightLog.date.desc()).first()
+                    if latest_weight_log:
+                        latest_weight = latest_weight_log.weight
+                
+                if latest_weight:
+                    if profile.gender == 'male':
+                        bmr = 10 * latest_weight + 6.25 * profile.height - 5 * profile.age + 5
+                    else:  # female
+                        bmr = 10 * latest_weight + 6.25 * profile.height - 5 * profile.age - 161
+                    
+                    # 根据活动水平调整
+                    activity_multiplier = {
+                        'sedentary': 1.2,      # 久坐
+                        'lightly_active': 1.375,  # 轻度活跃
+                        'moderately_active': 1.55,  # 中度活跃
+                        'very_active': 1.725   # 高度活跃
+                    }
+                    multiplier = activity_multiplier.get(profile.activity_level, 1.2)
+                    bmr = bmr * multiplier
+        
+        # 总消耗 = 运动消耗 + 基础代谢
+        total_burned = exercise_burned + bmr
         
         # 获取今日饮食记录（使用安全查询避免字段缺失问题）
         try:
@@ -489,12 +565,33 @@ def dashboard():
         # 计算今日摄入热量
         total_consumed = sum(meal.calories or 0 for meal in today_meals)
         
+        # 按餐次合并饮食记录
+        meals_by_type = {}
+        for meal in today_meals:
+            meal_type = meal.meal_type or 'other'
+            if meal_type not in meals_by_type:
+                meals_by_type[meal_type] = {
+                    'type': meal_type,
+                    'foods': [],
+                    'total_calories': 0,
+                    'created_at': meal.created_at
+                }
+            meals_by_type[meal_type]['foods'].append(meal)
+            meals_by_type[meal_type]['total_calories'] += (meal.calories or 0)
+        
+        # 转换为列表并按时间排序
+        grouped_meals = list(meals_by_type.values())
+        grouped_meals.sort(key=lambda x: x['created_at'])
+        
         return render_template('dashboard.html',
                              profile=profile,
                              active_goal=active_goal,
                              today_exercises=today_exercises,
                              today_meals=today_meals,
-                             total_burned=total_burned,
+                             grouped_meals=grouped_meals,
+                             total_burned=int(total_burned),
+                             exercise_burned=exercise_burned,
+                             bmr=int(bmr),
                              total_consumed=total_consumed)
     
     except Exception as e:
@@ -1299,16 +1396,7 @@ def get_recovery_advice(intensity, duration):
     else:
         return '可进行日常活动'
 
-def get_motivation_message(fitness_score):
-    """获取激励信息"""
-    if fitness_score >= 80:
-        return '表现卓越！继续保持这种状态！'
-    elif fitness_score >= 60:
-        return '做得很好！坚持就是胜利！'
-    elif fitness_score >= 40:
-        return '不错的开始，继续努力！'
-    else:
-        return '每一步都是进步，加油！'
+# Note: get_motivation_message function removed - replaced with get_daily_quote() for daily motivational quotes
 
 def get_health_alerts(intensity, duration, age):
     """获取健康提醒"""
@@ -1929,7 +2017,7 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
         "daily_nutrition_tip": "今日营养贴士",
         "hydration_reminder": "补水提醒"
     },
-    "motivation_message": "激励话语"
+    "motivation_message": "每日鼓励名言"
 }
 '''
         
@@ -1952,7 +2040,7 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
 
 {json_template}
 
-请基于营养学专业知识进行准确分析，确保数据真实可靠。
+请基于营养学专业知识进行准确分析，确保数据真实可靠。注意：motivation_message字段会被系统自动替换为每日鼓励名言，可以留空或填写占位符。
 """
         
         # 调用Gemini API
@@ -1995,6 +2083,9 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
             basic_nutrition['fat'] = round(estimated_calories * 0.30 / 9)  # 30%脂肪
             result['basic_nutrition'] = basic_nutrition
             print(f"🔧 DEBUG: 修复后热量: {estimated_calories}")
+        
+        # 添加每日激励名言到结果中
+        result['motivation_message'] = get_daily_quote()
         
         # 如果是自然语言输入，添加解析信息到结果中
         if natural_language_input:
@@ -2082,7 +2173,7 @@ def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_i
         "strength_development": "力量发展",
         "injury_risk": "受伤风险评估"
     },
-    "motivation_message": "激励话语"
+    "motivation_message": "每日鼓励名言"
 }'''
         
         if exercise_description:
@@ -2106,7 +2197,7 @@ def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_i
 
 {json_template}
 
-请基于运动生理学和健身专业知识进行准确分析，确保数据科学可靠，fitness_score满分10分。
+请基于运动生理学和健身专业知识进行准确分析，确保数据科学可靠，fitness_score满分10分。注意：motivation_message字段会被系统自动替换为每日鼓励名言，可以留空或填写占位符。
 """
         else:
             # 传统分离字段的prompt
@@ -2130,7 +2221,7 @@ def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_i
 
 {json_template}
 
-请基于运动生理学和健身专业知识进行准确分析，确保数据科学可靠，fitness_score满分10分。
+请基于运动生理学和健身专业知识进行准确分析，确保数据科学可靠，fitness_score满分10分。注意：motivation_message字段会被系统自动替换为每日鼓励名言，可以留空或填写占位符。
 """
         
         # 调用Gemini API
@@ -2147,6 +2238,10 @@ def call_gemini_exercise_analysis(exercise_type, exercise_name, duration, user_i
             result_text = result_text[:-3]
         
         result = json.loads(result_text)
+        
+        # 添加每日激励名言到结果中
+        result['motivation_message'] = get_daily_quote()
+        
         return result
         
     except Exception as e:
@@ -2195,7 +2290,7 @@ def generate_fallback_exercise_analysis(exercise_type, exercise_name, duration, 
             'strength_development': '有助力量发展',
             'injury_risk': '受伤风险较低'
         },
-        'motivation_message': get_motivation_message(fitness_score)
+        'motivation_message': get_daily_quote()
     }
 
 def generate_fallback_nutrition_analysis(food_items, meal_type):
@@ -2267,19 +2362,19 @@ def generate_fallback_nutrition_analysis(food_items, meal_type):
         strengths = ["食物搭配营养丰富", "健康食材选择优秀", "营养比例均衡"]
         improvements = ["继续保持优秀的饮食习惯"]
         calorie_assessment = "热量适中，营养密度高"
-        motivation = "出色的营养搭配！继续保持这样的健康饮食！"
+        motivation = get_daily_quote()
     elif meal_score >= 7.0:
         balance_rating = "营养较为均衡"
         strengths = ["食物搭配较丰富", "营养相对均衡"]
         improvements = ["建议增加蔬菜水果", "适当控制高热量食物"]
         calorie_assessment = "热量适中，可以优化营养结构"
-        motivation = "营养搭配不错，可以在健康食材上再加强一些！"
+        motivation = get_daily_quote()
     else:
         balance_rating = "营养需要改善"
         strengths = ["有一定的营养摄入"]
         improvements = ["建议多吃蔬菜水果", "减少高热量加工食品", "增加蛋白质来源"]
         calorie_assessment = "建议优化食物选择，提高营养质量"
-        motivation = "营养搭配有改善空间，建议多选择新鲜天然的食材！"
+        motivation = get_daily_quote()
     
     return {
         "basic_nutrition": {

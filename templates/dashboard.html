@@ -31,9 +31,13 @@
             </div>
             <div class="stat-number">{{ total_burned }}</div>
             <div class="text-muted">今日消耗 (kcal)</div>
-            {% if profile %}
-            <div class="small text-success">
-                目标：{{ (profile.bmr * 1.2)|round|int }} kcal
+            {% if bmr > 0 %}
+            <div class="small text-info">
+                运动：{{ exercise_burned }}kcal + 基础：{{ bmr }}kcal
+            </div>
+            {% elif profile %}
+            <div class="small text-warning">
+                请完善个人资料以计算基础代谢
             </div>
             {% endif %}
         </div>
@@ -156,18 +160,32 @@
                 </h5>
             </div>
             <div class="card-body">
-                {% if today_meals %}
-                    {% for meal in today_meals %}
-                    <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded">
-                        <div>
-                            <h6 class="mb-1">{{ meal.food_name }}</h6>
-                            <small class="text-muted">
-                                {{ meal.meal_type_display }} · {{ meal.quantity }}g
-                            </small>
+                {% if grouped_meals %}
+                    {% for meal_group in grouped_meals %}
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">
+                                {% if meal_group.type == 'breakfast' %}早餐
+                                {% elif meal_group.type == 'lunch' %}午餐
+                                {% elif meal_group.type == 'dinner' %}晚餐
+                                {% elif meal_group.type == 'snack' %}加餐
+                                {% else %}{{ meal_group.type | title }}{% endif %}
+                            </h6>
+                            <div class="text-end">
+                                <div class="fw-bold text-success">{{ meal_group.total_calories }}</div>
+                                <small class="text-muted">kcal</small>
+                            </div>
                         </div>
-                        <div class="text-end">
-                            <div class="fw-bold text-success">{{ meal.calories }}</div>
-                            <small class="text-muted">kcal</small>
+                        <div class="food-list">
+                            {% for food in meal_group.foods %}
+                            <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                                <small class="text-muted">
+                                    {{ food.food_name }} 
+                                    {% if food.quantity %}({{ food.quantity }}g){% endif %}
+                                </small>
+                                <small class="text-success">{{ food.calories }}kcal</small>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                     {% endfor %}
@@ -421,13 +439,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 计算并显示BMI
     function calculateAndShowBMI(weight) {
-        // 这里需要用户的身高信息，可以从用户资料中获取
-        // 暂时使用模拟数据，实际应该从后端获取
-        const height = 170; // cm，应该从用户profile获取
+        // 从用户资料获取身高信息
+        {% if profile and profile.height %}
+        const height = {{ profile.height }}; // cm，从用户profile获取
+        {% else %}
+        const height = null; // 未设置身高
+        {% endif %}
         
         if (height && height > 0) {
             const heightInMeters = height / 100;
-            const bmi = (weight / (heightInMeters * heightInMeters)).toFixed(1);
+            const bmi = parseFloat((weight / (heightInMeters * heightInMeters)).toFixed(1));
             
             let status = '';
             let colorClass = '';
@@ -449,6 +470,10 @@ document.addEventListener('DOMContentLoaded', function() {
             bmiValue.textContent = bmi;
             bmiStatus.textContent = status;
             bmiDisplay.className = `mb-3 alert alert-${colorClass}`;
+            bmiDisplay.style.display = 'block';
+        } else {
+            // 如果没有身高信息，显示提示
+            bmiDisplay.innerHTML = '<div class="alert alert-warning mb-0"><small>请先在个人资料中设置身高以计算BMI</small></div>';
             bmiDisplay.style.display = 'block';
         }
     }
