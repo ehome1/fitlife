@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "vercel_app.py",
+      "src": "emergency_vercel.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "vercel_app.py"
+      "dest": "emergency_vercel.py"
     }
   ],
   "env": {
@@ -17,7 +17,7 @@
     "PYTHONPATH": "."
   },
   "functions": {
-    "vercel_app.py": {
+    "emergency_vercel.py": {
       "maxDuration": 30
     }
   }
