@@ -1110,6 +1110,63 @@ function generateDetailedAnalysisHTML(analysis) {
                             <div class="progress-bar bg-info" style="width: ${nutritionBreakdown.fat_percentage || 0}%"></div>
                         </div>
                     </div>
+                    
+                    <!-- 扩展营养成分分析 -->
+                    <div class="mt-3">
+                        <h6 class="text-muted mb-2"><i class="fas fa-microscope me-1"></i>详细营养分析</h6>
+                        
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>🌿 膳食纤维: ${basicNutrition.fiber || 0}g</span>
+                                <small class="text-muted">${(((basicNutrition.fiber || 0) / 25 * 100).toFixed(0))}% 推荐摄入</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success" style="width: ${Math.min(((basicNutrition.fiber || 0) / 25 * 100), 100)}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>🍭 糖分: ${basicNutrition.sugar || 0}g</span>
+                                <small class="text-muted">${(((basicNutrition.sugar || 0) / 50 * 100).toFixed(0))}% 限制摄入</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar ${((basicNutrition.sugar || 0) > 50) ? 'bg-danger' : ((basicNutrition.sugar || 0) > 25) ? 'bg-warning' : 'bg-success'}" 
+                                     style="width: ${Math.min(((basicNutrition.sugar || 0) / 50 * 100), 100)}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>🧂 钠含量: ${basicNutrition.sodium || 0}mg</span>
+                                <small class="text-muted">${(((basicNutrition.sodium || 0) / 2300 * 100).toFixed(0))}% 推荐限制</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar ${((basicNutrition.sodium || 0) > 2300) ? 'bg-danger' : ((basicNutrition.sodium || 0) > 1500) ? 'bg-warning' : 'bg-success'}" 
+                                     style="width: ${Math.min(((basicNutrition.sodium || 0) / 2300 * 100), 100)}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>🥛 钙含量: ${basicNutrition.calcium || 0}mg</span>
+                                <small class="text-muted">${(((basicNutrition.calcium || 0) / 1000 * 100).toFixed(0))}% 推荐摄入</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-primary" style="width: ${Math.min(((basicNutrition.calcium || 0) / 1000 * 100), 100)}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>💊 维生素C: ${basicNutrition.vitamin_c || 0}mg</span>
+                                <small class="text-muted">${(((basicNutrition.vitamin_c || 0) / 90 * 100).toFixed(0))}% 推荐摄入</small>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-warning" style="width: ${Math.min(((basicNutrition.vitamin_c || 0) / 90 * 100), 100)}%"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

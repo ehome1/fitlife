@@ -1990,7 +1990,10 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
         "carbohydrates": 数值, 
         "fat": 数值,
         "fiber": 数值,
-        "sugar": 数值
+        "sugar": 数值,
+        "sodium": 数值,
+        "calcium": 数值,
+        "vitamin_c": 数值
     },
     "nutrition_breakdown": {
         "protein_percentage": 数值,
@@ -2039,6 +2042,13 @@ def call_gemini_meal_analysis(meal_type, food_items, user_info, natural_language
 请按照以下JSON格式返回营养分析结果（只返回JSON，不要其他文字）：
 
 {json_template}
+
+营养成分计算说明：
+- basic_nutrition中的fiber(膳食纤维,g)、sugar(糖分,g)、sodium(钠,mg)、calcium(钙,mg)、vitamin_c(维生素C,mg)需要基于食物种类和分量进行合理估算
+- 钠含量：特别关注加工食品、调料等
+- 钙含量：重点评估奶制品、豆制品、绿叶蔬菜等
+- 维生素C：主要来源于新鲜蔬菜水果
+- 如果某营养成分含量极少可设为0，但应尽量给出合理估值
 
 请基于营养学专业知识进行准确分析，确保数据真实可靠。注意：motivation_message字段会被系统自动替换为每日鼓励名言，可以留空或填写占位符。
 """
@@ -2383,7 +2393,10 @@ def generate_fallback_nutrition_analysis(food_items, meal_type):
             "carbohydrates": carbs_g,
             "fat": fat_g,
             "fiber": max(3, min(12, 5 + len(food_items))),
-            "sugar": max(5, min(30, 15 + (food_hash % 20)))
+            "sugar": max(5, min(30, 15 + (food_hash % 20))),
+            "sodium": max(200, min(2000, 500 + (food_hash % 800))),  # 钠含量 (mg)
+            "calcium": max(50, min(300, 100 + (food_hash % 150))),   # 钙含量 (mg)
+            "vitamin_c": max(0, min(80, 20 + (food_hash % 40)))      # 维生素C (mg)
         },
         "nutrition_breakdown": {
             "protein_percentage": round(protein_pct, 1),
